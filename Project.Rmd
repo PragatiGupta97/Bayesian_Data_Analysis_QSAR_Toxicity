@@ -1,0 +1,97 @@
+---
+title: "BDA Project"
+author: "Dylan, Francesco, Pragati"
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: 1
+  html_document:
+    toc: yes
+    toc_depth: '1'
+    df_print: paged
+---
+
+
+
+```{r setup, include=FALSE}
+# This chunk sets echo = TRUE as default, that is print all code.
+# knitr::opts_chunk$set can be used to set other notebook generation options, too.
+# include=FALSE inside curly brackets makes this block not be included in the pdf
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, results='hide',message=FALSE}
+#Loaded packages
+# To install aaltobda, see the General information in the assignment.
+library(aaltobda)
+library(rstan)
+library(bayesplot)
+options(mc.cores = parallel::detectCores(),control = list(max_treedepth = 11))
+rstan_options(auto_write = TRUE)
+set.seed(123)
+
+```
+
+```{r}
+YE <- read.csv(file = 'API_ILO_country_YU.csv')
+colnames(YE)
+```
+
+# 1) Introduction
+
+## Motivation
+## The problem
+## Modeling idea
+
+## illustrative figure is recommended.
+
+# 2) Description of the data and the analysis problem. 
+
+Provide information where the data was obtained, and if it has been previously used in some online case study and how your analysis differs from the existing analyses.
+
+# 3) Description of at least two models, for example:
+
+## non hierarchical and hierarchical,
+
+## linear and non linear
+## variable selection with many models.
+
+# 4) Informative or weakly informative priors
+and justification of their choices.
+
+# 5) Stan code 
+(brms can be used to generate the code, but Stan code needs to be present and explained).
+
+# 6) How to the Stan model was run
+
+that is, what options were used. This is also more clear as combination of textual explanation and the actual code line.
+
+# 7) Convergence diagnostics 
+
+(Rˆ, ESS, divergences) and what was done if the convergence was not good with the first try.
+
+# 8) Posterior predictive checks
+
+and what was done to improve the model.
+
+# 9) Model comparison 
+(e.g. with LOO-CV).
+
+# 10) Predictive performance assessment 
+
+if applicable (e.g. classification accuracy) and evaluation of practical usefulness of the accuracy.
+
+# 11) Sensitivity analysis 
+
+with respect to prior choices (i.e. checking whether the result changes a lot if prior is changed)
+
+# 12) Discussion of issues and potential improvements.
+
+# 13) Conclusion 
+
+what was learned from the data analysis.
+
+# 14) Self-reflection of what the group learned while making the project.
+
+
