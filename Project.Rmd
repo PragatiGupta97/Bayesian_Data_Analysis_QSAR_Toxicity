@@ -9,6 +9,9 @@ output:
     toc: yes
     toc_depth: '1'
     df_print: paged
+  word_document:
+    toc: yes
+    toc_depth: '1'
 ---
 
 
@@ -21,7 +24,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-```{r, results='hide',message=FALSE}
+```{r, results='hide',message=FALSE,include=FALSE}
 #Loaded packages
 # To install aaltobda, see the General information in the assignment.
 library(aaltobda)
@@ -41,7 +44,9 @@ colnames(YE)
 #just checking the model
 
 ```{r}
-fullmodel=lm(X2014~X2013+X2012+X2011+X2010,data=YE)
+#fullmodel=lm(X2014~poly(X2013,3)+poly(X2012,3)+poly(X2011,3)+poly(X2010,3),data=YE)
+
+fullmodel=lm(X2014~X2013+X2012+X2011+X2010)
 summary(fullmodel)
 ```
 
@@ -55,21 +60,21 @@ summary(fullmodel)
 
 ```{r}
 par(mfrow=c(1,2),mar=c(2.5,2.5,3.5,1.5))
-plot(YE$X2014,YE$X2013)
+plot(YE$X2014,YE$X2013, ylab="2014", xlab="2013",main="2014 vs 2013")
 abline(coef=coef(fullmodel), col='red')
 #predict(fullmodel)
-plot(YE$X2014,fullmodel$res, ylab="e_bar", xlab="y_bar")
+plot(YE$X2014,fullmodel$res, ylab="e_bar", xlab="y_bar", main="Residual plot")
 abline(0,0)
 
 ```
 
 ```{r}
 par(mfrow=c(3,2),mar=c(2.5,2.5,3.5,1.5))
-hist(YE$X2014, breaks =10)
-hist(YE$X2013,breaks =10)
-hist(YE$X2012,breaks =10)
-hist(YE$X2011,breaks =10)
-hist(YE$X2010,breaks =10)
+hist(YE$X2014, breaks =10, main="2014")
+hist(YE$X2013,breaks =10,main="2013")
+hist(YE$X2012,breaks =10,main="2012")
+hist(YE$X2011,breaks =10,main="2011")
+hist(YE$X2010,breaks =10,main="2010")
 
 ```
 
@@ -89,6 +94,59 @@ and justification of their choices.
 
 # 5) Stan code 
 (brms can be used to generate the code, but Stan code needs to be present and explained).
+
+
+```{r}
+
+X2010 = YE$X2010
+X2011 = YE$X2011
+X2012 = YE$X2012
+X2013 = YE$X2013
+X2014 = YE$X2014
+
+n=dim(YE)[1]
+
+ye_data <-list(N=n,X2010=X2010,X2011=X2011,X2012=X2012,X2013=X2013,X2014=X2014)
+
+model_simple <-stan(file = 'project.stan' , data = ye_data)
+print(model_simple)
+```
+
+```{r}
+fit_summary <- summary(model_simple)
+View(fit_summary$summary)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # 6) How to the Stan model was run
 
