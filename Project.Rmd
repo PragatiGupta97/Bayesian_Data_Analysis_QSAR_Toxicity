@@ -38,6 +38,13 @@ YE <- read.csv(file = 'API_ILO_country_YU.csv')
 colnames(YE)
 ```
 
+#just checking the model
+
+```{r}
+fullmodel=lm(X2014~X2013+X2012+X2011+X2010,data=YE)
+summary(fullmodel)
+```
+
 # 1) Introduction
 
 ## Motivation
@@ -45,6 +52,26 @@ colnames(YE)
 ## Modeling idea
 
 ## illustrative figure is recommended.
+
+```{r}
+par(mfrow=c(1,2),mar=c(2.5,2.5,3.5,1.5))
+plot(YE$X2014,YE$X2013)
+abline(coef=coef(fullmodel), col='red')
+#predict(fullmodel)
+plot(YE$X2014,fullmodel$res, ylab="e_bar", xlab="y_bar")
+abline(0,0)
+
+```
+
+```{r}
+par(mfrow=c(3,2),mar=c(2.5,2.5,3.5,1.5))
+hist(YE$X2014, breaks =10)
+hist(YE$X2013,breaks =10)
+hist(YE$X2012,breaks =10)
+hist(YE$X2011,breaks =10)
+hist(YE$X2010,breaks =10)
+
+```
 
 # 2) Description of the data and the analysis problem. 
 
