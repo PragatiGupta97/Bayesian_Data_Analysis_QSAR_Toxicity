@@ -25,9 +25,19 @@ model {
 X2014 ~ normal (mu , sigma );
 
 }
-//generated quantities {
-//  real ypred = normal_rng (alpha + beta*xpred , sigma);
-//}
+generated quantities {
+//real ypred ;
+vector[N] log_lik;
+//Compute predictive distribution for the first machine
+//ypred = normal_rng ( mu , sigma);
+for (i in 1:N)
+{
+log_lik[i]= normal_lpdf(X2014[i] | mu ,sigma );
+}
+}
+
+
+
 
 
 
