@@ -30,6 +30,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(aaltobda)
 library(rstan)
 library(bayesplot)
+library(loo)
 options(mc.cores = parallel::detectCores(),control = list(max_treedepth = 11))
 rstan_options(auto_write = TRUE)
 set.seed(123)
@@ -46,7 +47,7 @@ colnames(YE)
 ```{r}
 #fullmodel=lm(X2014~poly(X2013,3)+poly(X2012,3)+poly(X2011,3)+poly(X2010,3),data=YE)
 
-fullmodel=lm(X2014~X2013+X2012+X2011+X2010)
+fullmodel=lm(YE$X2014~YE$X2013+YE$X2012+YE$X2011+YE$X2010)
 summary(fullmodel)
 ```
 
@@ -162,7 +163,10 @@ and what was done to improve the model.
 
 # 9) Model comparison 
 (e.g. with LOO-CV).
-
+```{r}
+loo_model_simple <- loo(extract_log_lik(model_simple))
+loo_model_simple
+```
 # 10) Predictive performance assessment 
 
 if applicable (e.g. classification accuracy) and evaluation of practical usefulness of the accuracy.
