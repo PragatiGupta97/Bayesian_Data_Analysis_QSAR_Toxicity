@@ -1,0 +1,291 @@
+---
+title: "BDA Project"
+author: "Dylan, Francesco, Pragati"
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: 1
+  html_document:
+    toc: yes
+    toc_depth: '1'
+    df_print: paged
+  word_document:
+    toc: yes
+    toc_depth: '1'
+---
+
+
+
+```{r setup, include=FALSE}
+# This chunk sets echo = TRUE as default, that is print all code.
+# knitr::opts_chunk$set can be used to set other notebook generation options, too.
+# include=FALSE inside curly brackets makes this block not be included in the pdf
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, results='hide',message=FALSE,include=FALSE}
+#Loaded packages
+# To install aaltobda, see the General information in the assignment.
+library(aaltobda)
+library(rstan)
+library(bayesplot)
+library(loo)
+options(mc.cores = parallel::detectCores(),control = list(max_treedepth = 11))
+rstan_options(auto_write = TRUE)
+set.seed(123)
+
+```
+
+
+
+
+
+# 1) Introduction
+
+
+**QSAR toxicity **
+
+```{r}
+QSAR <- read.csv(file = 'qsar_aquatic_toxicity.csv')
+colnames(QSAR)
+
+```
+
+## Motivation
+
+## The problem
+
+## Modeling idea
+
+We want our predictions of the linear model to be close to the linear model
+
+```{r}
+#creating linear model
+fullmodel=lm(quantitative_response~TSPA+Saacc+H050+MLOGP+RDCHI+GATS1p+nN+C040, data =QSAR)
+summary(fullmodel)
+plot(QSAR$quantitative_response,fullmodel$res, ylab="e_bar", xlab="y_bar", main="Residual plot")
+abline(0,0)
+```
+
+
+## Illustrative figure 
+
+Visualizing the density plot of each variable
+
+```{r}
+par(mfrow=c(3,3))
+cols = colnames(QSAR)
+
+for(col in cols)
+{ 
+plot(density(QSAR[col][,1]), main=col)
+  
+}
+
+```
+
+# 2) Description of the data and the analysis problem. 
+
+Provide information where the data was obtained, and if it has been previously used in some online case study and how your analysis differs from the existing analyses.
+
+|feature number|Feature name|Feature Description|
+|---|---|---|
+| 1 |TSPA|31.51109|
+| 2 |SAACC|13.74853|
+| 3 |H050|25.01827|
+| 4 |MLOGP|11.12849|
+| 5 |RDCHI|14.39153|
+| 6 |GATS1p|14.39153|
+| 7 |nN|14.39153|
+| 8 |C040|14.39153|
+| 9 |Quantitative Response|14.39153|
+
+# 3) Description of at least two models, for example:
+
+## a) non hierarchical(linear)
+
+## b) hierarchical,
+
+
+# 4) Informative or weakly informative priors
+and justification of their choices.
+
+
+# 5) Stan code 
+## a) non hierarchical(linear)
+
+
+**Stan Code**
+```{r}
+code <- file("QSARproject.stan")
+writeLines(readLines(code))
+```
+
+
+## b) hierarchical
+
+
+```{r}
+code_hierarchial <- file("hierarchial.stan")
+writeLines(readLines(code_hierarchial))
+```
+
+
+# 6) How to the Stan model was run
+
+that is, what options were used. This is also more clear as combination of textual explanation and the actual code line.
+
+## a) non hierarchical(linear)
+
+```{r}
+TSPA=QSAR$TSPA
+Saacc=QSAR$Saacc
+H050=QSAR$H050
+MLOGP=QSAR$MLOGP
+RDCHI=QSAR$RDCHI
+GATS1p=QSAR$GATS1p
+nN=QSAR$nN
+C040=QSAR$C040
+qr=QSAR$quantitative_response
+n=dim(QSAR)[1]
+
+qsar_data <-list(N=n,qr=qr,TSPA=TSPA,Saacc=Saacc,H050=H050,MLOGP=MLOGP,RDCHI=RDCHI,GATS1p=GATS1p,nN=nN,C040=C040)
+
+model_simple <-stan(file = 'QSARproject.stan' , data = qsar_data, chains=4, iter=1000)
+#print(model_simple)
+params=extract(model_simple, permuted=FALSE, inc_warmup=TRUE)
+```
+
+
+## b) hierarchical
+```{r}
+TSPA=QSAR$TSPA
+Saacc=QSAR$Saacc
+H050=QSAR$H050
+MLOGP=QSAR$MLOGP
+RDCHI=QSAR$RDCHI
+GATS1p=QSAR$GATS1p
+nN=QSAR$nN
+C040=as.integer(QSAR$C040)
+qr=QSAR$quantitative_response
+n=dim(QSAR)[1]
+nc = length(unique(QSAR$C040))
+
+qsar_data <-list(N=n,qr=qr,TSPA=TSPA,Saacc=Saacc,H050=H050,MLOGP=MLOGP,RDCHI=RDCHI,GATS1p=GATS1p,nN=nN,C040=C040,nc=nc)
+
+hierarchial <-stan(file = 'hierarchial.stan' , data = qsar_data, chains=4, iter=1000)
+print(hierarchial)
+```
+
+
+# 7) Convergence diagnostics 
+
+Here we will discuss 5 types of convergence tests
+- Traceplots
+- $\hat{R}$
+- $n_{eff}$
+- Bulk ESS and Tail ESS
+- Divergences
+
+## Heirarchial 
+
+### 1) Traceplots
+
+```{r}
+
+#mcmc_trace(as.array(model_simple), pars = c("a","b","c","d","e","f","g","h","i"), facet_args = list(nrow = 3))
+traceplot(model_simple, pars=c("a","b","c","d","e","f","g","h","i"))
+```
+
+### 2) $\hat{R}$
+
+From printed output we can see that $\hat{R}$ < 1.01 for all the parameters
+
+### 3) $n_{eff}$
+
+```{r}
+neff=summary(model_simple)$summary[,'n_eff']
+val=neff/1000 
+#print(val)
+which(val < 0.01)
+```
+
+samples/ total iterations > 0.01, this means samples are not biased and true effect of sample size is not overestimated.
+
+### 4) Bulk ESS and Tail ESS
+
+BUlk ESS and tail ess over 100 for all the parameters
+
+### 5) Divergences
+
+```{r}
+
+pairs(model_simple,pars=c("a","b","c","d","e","f","g","h","i"))
+```
+
+```{r}
+get_num_divergent(model_simple)
+```
+
+No divergences in the pairplot
+
+
+## Heirarchial 
+
+
+
+# 8) Posterior predictive checks
+
+## Non-Heirarchial 
+and what was done to improve the model.
+```{r}
+# instead of log, use rng
+par( mfrow = c(1,2) )
+plot(density(QSAR$quantitative_response),main="Posterior predictive check for simle model")
+params<-extract(model_simple)
+for (ind in 1980:2000)
+{
+  lines(density(params$gen_lik[ind,]), col='red');
+}
+
+```
+
+# 9) Model comparison 
+(e.g. with LOO-CV).
+
+## Non Heirarchial 
+```{r}
+loo_model_simple <- loo(extract_log_lik(model_simple))
+print(loo_model_simple)
+plot(loo_model_simple, main = "PSIS Diagonostic for simple Model")
+```
+
+## Heirarchial 
+```{r}
+loo_model_hierarchial <- loo(extract_log_lik(hierarchial))
+loo_model_hierarchial
+plot(loo_model_hierarchial, main = "PSIS Diagonostic for Heirarchial Model")
+```
+
+
+# 10) Predictive performance assessment 
+
+if applicable (e.g. classification accuracy) and evaluation of practical usefulness of the accuracy.
+
+# 11) Sensitivity analysis 
+
+with respect to prior choices (i.e. checking whether the result changes a lot if prior is changed)
+
+2 types of priors
+
+
+# 12) Discussion of issues and potential improvements.
+
+# 13) Conclusion 
+
+what was learned from the data analysis.
+
+# 14) Self-reflection of what the group learned while making the project.
+
+
