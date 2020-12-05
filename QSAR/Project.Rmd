@@ -322,6 +322,37 @@ plot(loo_model_hierarchial, main = "PSIS Diagonostic for Heirarchial Model")
 
 if applicable (e.g. classification accuracy) and evaluation of practical usefulness of the accuracy.
 
+```{r}
+TSPA=QSAR$TSPA[1:380]
+Saacc=QSAR$Saacc[1:380]
+H050=QSAR$H050[1:380]
+MLOGP=QSAR$MLOGP[1:380]
+RDCHI=QSAR$RDCHI[1:380]
+GATS1p=QSAR$GATS1p[1:380]
+nN=QSAR$nN[1:380]
+C040=QSAR$C040[1:380]
+qr=QSAR$quantitative_response[1:380]
+n=380
+
+NP=165
+TSPA_new=QSAR$TSPA[381:545]
+Saacc_new=QSAR$Saacc[381:545]
+H050_new=QSAR$H050[381:545]
+MLOGP=QSAR$MLOGP[381:545]
+RDCHI=QSAR$RDCHI[381:545]
+GATS1p=QSAR$GATS1p[381:545]
+nN=QSAR$nN[381:545]
+C040=QSAR$C040[381:545]
+#qr=QSAR$quantitative_response[381:545]
+
+qsar_data_check <-list(N=n,qr=qr,TSPA=TSPA,Saacc=Saacc,H050=H050,MLOGP=MLOGP,RDCHI=RDCHI,GATS1p=GATS1p,nN=nN,C040=C040,
+                 NP=NP,TSPA_new=TSPA_new,Saacc_new=Saacc_new,H050_new=H050_new,MLOGP_new=MLOGP_new,RDCHI_new=RDCHI_new,GATS1p_new=GATS1p_new,nN_new=nN_new,C040_new=C040_new)
+
+model_simple <-stan(file = 'simple_model_performance.stan' , data = qsar_data_check, chains=4, iter=1000)
+#print(model_simple)
+params=extract(model_simple, permuted=FALSE, inc_warmup=TRUE)
+```
+
 # 11) Sensitivity analysis 
 
 with respect to prior choices (i.e. checking whether the result changes a lot if prior is changed)
