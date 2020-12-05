@@ -30,6 +30,9 @@ knitr::opts_chunk$set(echo = TRUE)
 library(aaltobda)
 library(rstan)
 library(bayesplot)
+library(WVPlots)
+library(latticeExtra)
+library(sfsmisc)
 options(mc.cores = parallel::detectCores(),control = list(max_treedepth = 11))
 rstan_options(auto_write = TRUE)
 set.seed(123)
@@ -41,6 +44,15 @@ QSAR <- read.csv(file = 'qsar_aquatic_toxicity.csv')
 colnames(QSAR)
 ```
 
+```{r}
+PairPlot(QSAR, colnames(QSAR)[1:8], "Pair Plotting of each pair of features", alpha = 0.8,  point_color = "blue")
+pairs(QSAR[,1:8], pch = 18,  cex = 0.4, col = "#FC4E07", lower.panel=NULL)
+```
+
+```{r}
+heatmap(as.matrix(QSAR))
+boxplot.default(QSAR, horizontal = TRUE)
+```
 
 ```{r}
 
