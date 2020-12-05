@@ -38,9 +38,6 @@ set.seed(123)
 ```
 
 
-
-
-
 # 1) Introduction
 
 
@@ -174,8 +171,8 @@ nc = length(unique(QSAR$C040))
 
 qsar_data <-list(N=n,qr=qr,TSPA=TSPA,Saacc=Saacc,H050=H050,MLOGP=MLOGP,RDCHI=RDCHI,GATS1p=GATS1p,nN=nN,C040=C040,nc=nc)
 
-hierarchial <-stan(file = 'hierarchial.stan' , data = qsar_data, chains=4, iter=1000)
-print(hierarchial)
+hierarchial <-stan(file = 'hierarchial.stan' , data = qsar_data, chains=4, iter=2000)
+#print(hierarchial)
 ```
 
 
@@ -220,8 +217,7 @@ BUlk ESS and tail ess over 100 for all the parameters
 ### 5) Divergences
 
 ```{r}
-
-pairs(model_simple,pars=c("a","b","c","d","e","f","g","h","i"))
+#pairs(model_simple,pars=c("a","b","c","d","e","f","g","h","i"))
 ```
 
 ```{r}
@@ -233,6 +229,45 @@ No divergences in the pairplot
 
 ## Heirarchial 
 
+```{r}
+
+#mcmc_trace(as.array(model_simple), pars = c("a","b","c","d","e","f","g","h","i"), facet_args = list(nrow = 3))
+traceplot(hierarchial, pars=c("a","b","c","d","e","f","g","h"))
+```
+
+### 2) $\hat{R}$
+
+From printed output we can see that $\hat{R}$ < 1.06 for all the parameters
+
+### 3) $n_{eff}$
+
+```{r}
+neff=summary(hierarchial)$summary[,'n_eff']
+val=neff/2000 
+#print(val)
+which(val < 0.01)
+```
+
+samples/ total iterations > 0.01, this means samples are not biased and true effect of sample size is not overestimated.
+
+### 4) Bulk ESS and Tail ESS
+
+BUlk ESS and tail ess over 100 for all the parameters
+
+### 5) Divergences
+
+```{r}
+#pairs(model_simple,pars=c("a","b","c","d","e","f","g","h","i"))
+```
+
+```{r}
+get_num_divergent(hierarchial)
+```
+
+Initially the divergences were 552, 
+but after setting the adapt_delta=0.95, the divergences were reduced to 408.
+So we eavaluated the hierarchial model was not satisafactory.
+
 
 
 # 8) Posterior predictive checks
@@ -241,10 +276,21 @@ No divergences in the pairplot
 and what was done to improve the model.
 ```{r}
 # instead of log, use rng
-par( mfrow = c(1,2) )
-plot(density(QSAR$quantitative_response),main="Posterior predictive check for simle model")
+plot(density(QSAR$quantitative_response),main="Posterior predictive check for simple model")
 params<-extract(model_simple)
 for (ind in 1980:2000)
+{
+  lines(density(params$gen_lik[ind,]), col='red');
+}
+
+```
+##  Heirarchial 
+and what was done to improve the model.
+```{r}
+# instead of log, use rng
+plot(density(QSAR$quantitative_response),main="Posterior predictive check for simple model")
+params<-extract(hierarchial)
+for (ind in 3980:4000)
 {
   lines(density(params$gen_lik[ind,]), col='red');
 }
@@ -254,19 +300,22 @@ for (ind in 1980:2000)
 # 9) Model comparison 
 (e.g. with LOO-CV).
 
+
+
 ## Non Heirarchial 
 ```{r}
 loo_model_simple <- loo(extract_log_lik(model_simple))
 print(loo_model_simple)
 plot(loo_model_simple, main = "PSIS Diagonostic for simple Model")
 ```
+## Hierarchial 
 
-## Heirarchial 
 ```{r}
 loo_model_hierarchial <- loo(extract_log_lik(hierarchial))
 loo_model_hierarchial
 plot(loo_model_hierarchial, main = "PSIS Diagonostic for Heirarchial Model")
 ```
+
 
 
 # 10) Predictive performance assessment 
