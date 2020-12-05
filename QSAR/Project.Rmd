@@ -46,7 +46,6 @@ set.seed(123)
 ```{r}
 QSAR <- read.csv(file = 'qsar_aquatic_toxicity.csv')
 colnames(QSAR)
-
 ```
 
 ## Motivation
@@ -323,36 +322,48 @@ plot(loo_model_hierarchial, main = "PSIS Diagonostic for Heirarchial Model")
 if applicable (e.g. classification accuracy) and evaluation of practical usefulness of the accuracy.
 
 ```{r}
-TSPA=QSAR$TSPA[1:380]
-Saacc=QSAR$Saacc[1:380]
-H050=QSAR$H050[1:380]
-MLOGP=QSAR$MLOGP[1:380]
-RDCHI=QSAR$RDCHI[1:380]
-GATS1p=QSAR$GATS1p[1:380]
-nN=QSAR$nN[1:380]
-C040=QSAR$C040[1:380]
-qr=QSAR$quantitative_response[1:380]
-n=380
+NP=20
+n=dim(QSAR)[1]
+ngob = n-NP
+TSPA=QSAR$TSPA[1:ngob]
+Saacc=QSAR$Saacc[1:ngob]
+H050=QSAR$H050[1:ngob]
+MLOGP=QSAR$MLOGP[1:ngob]
+RDCHI=QSAR$RDCHI[1:ngob]
+GATS1p=QSAR$GATS1p[1:ngob]
+nN=QSAR$nN[1:ngob]
+C040=QSAR$C040[1:ngob]
+qr=QSAR$quantitative_response[1:ngob]
 
-NP=165
-TSPA_new=QSAR$TSPA[381:545]
-Saacc_new=QSAR$Saacc[381:545]
-H050_new=QSAR$H050[381:545]
-MLOGP=QSAR$MLOGP[381:545]
-RDCHI=QSAR$RDCHI[381:545]
-GATS1p=QSAR$GATS1p[381:545]
-nN=QSAR$nN[381:545]
-C040=QSAR$C040[381:545]
+
+
+TSPA_new=QSAR$TSPA[(ngob+1):n]
+Saacc_new=QSAR$Saacc[(ngob+1):n]
+H050_new=QSAR$H050[(ngob+1):n]
+MLOGP_new=QSAR$MLOGP[(ngob+1):n]
+RDCHI_new=QSAR$RDCHI[(ngob+1):n]
+GATS1p_new=QSAR$GATS1p[(ngob+1):n]
+nN_new=QSAR$nN[(ngob+1):n]
+C040_new=QSAR$C040[(ngob+1):n]
 #qr=QSAR$quantitative_response[381:545]
 
-qsar_data_check <-list(N=n,qr=qr,TSPA=TSPA,Saacc=Saacc,H050=H050,MLOGP=MLOGP,RDCHI=RDCHI,GATS1p=GATS1p,nN=nN,C040=C040,
+qsar_data_check <-list(N=ngob,qr=qr,TSPA=TSPA,Saacc=Saacc,H050=H050,MLOGP=MLOGP,RDCHI=RDCHI,GATS1p=GATS1p,nN=nN,C040=C040,
                  NP=NP,TSPA_new=TSPA_new,Saacc_new=Saacc_new,H050_new=H050_new,MLOGP_new=MLOGP_new,RDCHI_new=RDCHI_new,GATS1p_new=GATS1p_new,nN_new=nN_new,C040_new=C040_new)
 
-model_simple <-stan(file = 'simple_model_performance.stan' , data = qsar_data_check, chains=4, iter=1000)
-#print(model_simple)
-params=extract(model_simple, permuted=FALSE, inc_warmup=TRUE)
+model_check <-stan(file = 'simple_model_performance.stan' , data = qsar_data_check, chains=4, iter=1000)
+params=extract(model_check, permuted=FALSE, inc_warmup=TRUE)
 ```
 
+```{r}
+new_params= extract(model_check)
+pred_scores = colMeans(new_params$qr_predicted)
+pred_error = sapply(1:NP, function(x) sd(new_params$qr_predicted[,x]))
+true_scores = QSAR$quantitative_response[(ngob+1):n]
+plot(true_scores,pred_scores,xlim=range(1:10), ylim=range(1:10))
+abline(a=0,b=1,lty="dashed")
+arrows(true_scores,pred_scores+pred_error,true_scores,pred_scores-pred_error, length =0.05, angle = 90, code =3)
+
+```
 # 11) Sensitivity analysis 
 
 with respect to prior choices (i.e. checking whether the result changes a lot if prior is changed)

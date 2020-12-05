@@ -11,7 +11,7 @@ vector [N] nN;
 vector [N] C040;
 
 int < lower =1> NP; // number of data points to be predicted
-#vector [NP] qr_new;// quantitative response
+//vector [NP] qr_new;// quantitative response
 vector [NP] TSPA_new;
 vector [NP] Saacc_new;
 vector [NP] H050_new;
@@ -48,11 +48,13 @@ qr ~ normal (mu , sigma );
 }
 generated quantities {
 //generated qr
+vector [NP] mu_new= a + b * TSPA_new + c * Saacc_new + d *H050_new + 
+e *MLOGP_new+ f*RDCHI_new +g*GATS1p_new+ h*nN_new + i*C040_new;
 
 vector[NP] qr_predicted;
 for (ind in 1:NP)
 {
-qr_predicted[ind]= normal_rng (mu[ind] ,sigma);
+qr_predicted[ind]= normal_rng (mu_new[ind] ,sigma);
 };
 
 
