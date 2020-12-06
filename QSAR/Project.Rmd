@@ -166,21 +166,19 @@ params=extract(linear_model, permuted=FALSE, inc_warmup=TRUE)
 
 ## b) hierarchical
 ```{r}
-# TSPA=QSAR$TSPA
-# Saacc=QSAR$Saacc
-# H050=QSAR$H050
-# MLOGP=QSAR$MLOGP
-# RDCHI=QSAR$RDCHI
-# GATS1p=QSAR$GATS1p
-# nN=QSAR$nN
-# C040=as.integer(QSAR$C040)
-# qr=QSAR$quantitative_response
-# n=dim(QSAR)[1]
-# nc = length(unique(QSAR$C040))
-# 
-# qsar_data <-list(N=n,qr=qr,TSPA=TSPA,Saacc=Saacc,H050=H050,MLOGP=MLOGP,RDCHI=RDCHI,GATS1p=GATS1p,nN=nN,C040=C040,nc=nc)
-# 
-# hierarchial <-stan(file = 'hierarchial.stan' , data = qsar_data, chains=4, iter=2000)
+
+
+n=dim(QSAR)[1]
+
+qr=QSAR$quantitative_response
+J=(dim(QSAR)[2]-2)
+x= QSAR[,1:(dim(QSAR)[2]-2)]
+C040=as.integer(QSAR$C040)
+nc = length(unique(QSAR$C040))
+
+qsar_data <-list(N=n,qr=qr,J=J,x=x,C040=C040,nc=nc)
+
+hierarchial <-stan(file = 'hierarchial.stan' , data = qsar_data, chains=4, iter=2000)
 #print(hierarchial)
 ```
 
