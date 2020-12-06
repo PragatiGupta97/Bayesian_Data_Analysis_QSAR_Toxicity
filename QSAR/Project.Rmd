@@ -1,6 +1,6 @@
 ---
 title: "BDA Project"
-author: "Dylan, Francesco, Pragati"
+author: "Hoang Dung Pham Nguyen (899376), Francesco Rota (887032), Pragati Gupta (881533)"
 output:
   pdf_document:
     toc: yes
@@ -185,16 +185,21 @@ where $\alpha$, $\rho$, $\sigma$ are hyperparameters defining the covariance fun
 
 
 # 4) Informative or weakly informative priors
+
 For this report, we used the following priors
 
 1) Weakly informative prior, very weak: normal(0, 10);
 2) Generic weakly informative prior: normal(0, 1);
 
-The recommendations have been followed as per @prior_recom
+The recommendations have been followed as per
 
 https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations
 
-## Linear Model
+## Liner Model
+
+$$
+\sigma \sim \mathcal{N}(0, 10) 
+$$
 
 $$
 W \sim \mathcal{N}(0, 1)
@@ -203,10 +208,14 @@ $$
 ## Hierarchical Model
 
 $$
+\sigma \sim \mathcal{N}(0, 10) 
+$$
+
+$$
 \mu_{c} \sim \mathcal{N}(0, 1) 
 $$
 $$
-\sigma_{c} \sim \mathcal{N}(0, 1) 
+\sigma_{c} \sim \mathcal{N}(0, 10) 
 $$
 
 ## Gaussian Process Model
@@ -215,7 +224,7 @@ For Gaussian Process model, we use suggested prior from the tutorial
 
 https://mc-stan.org/docs/2_19/stan-users-guide/fit-gp-section.html
 
-The priors that I choose for Gaussian Process base on https://mc-stan.org/docs/2_19/stan-users-guide/fit-gp-section.html instruction.
+The priors that I choose for Gaussian Process base on @prior_recom https://mc-stan.org/docs/2_19/stan-users-guide/fit-gp-section.html instruction.
 
 $$
 \rho \sim InvGamma(5,5)
@@ -235,18 +244,161 @@ $$
 
 ## a) Linear (Non Hierarchical)
 
-```{r}
-code <- file("linear_model_split.stan")
-writeLines(readLines(code))
+We will implement the above model in Stan. Fix data is declared in data block. Train data and test data are define as input data
+
+```{}
+data {
+  int < lower =1> N_train; 
+  vector [N_train] qr_train;
+  int <lower=1> J; 
+  vector [J] x_train [N_train]; 
+  int < lower =1> N_test; 
+  vector [J] x_test [N_test];
+}
 ```
 
+In this code block, we define $alpha$ as a free parameter and and $beta$ as weight of columns of data  
+
+```{}
+parameters {
+  real alpha;
+  vector [J] beta; 
+  real < lower =0> sigma ;
+}
+```
+
+We transform $\mu$ defined in model description as a function of parameters and data.
+
+```{}
+transformed parameters {
+  vector [N_train] mu_train;
+  for (i in 1:N_train)
+  mu_train[i] = alpha + dot_product(x_train[i,:],beta');
+}
+```
+
+After defining all parameters, we set our prior and model.
+
+```{}
+model {
+  //priors
+  alpha~ normal(0,1);
+  for(j in 1:J) {
+    beta[j]~normal(0,1);
+  }
+  sigma ~ normal(0,10); 
+  
+  //likelihood
+  qr_train ~ normal (mu_train , sigma );
+}
+```
+
+After fitting model, we generate predictive value and log likelihood.
+
+```{}
+generated quantities {
+  vector [N_test] mu_test;
+  vector [N_test] qr_test;
+  vector[N_train] log_lik;
+  vector[N_train] gen_lik;
+  
+  for (i in 1:N_test) {
+    mu_test[i] = alpha + dot_product(x_test[i,:],beta');
+  }
+
+  for (ind in 1:N_test) {
+    qr_test[ind]= normal_rng (mu_test[ind] ,sigma);
+  }
+  
+  for (ind in 1:N_train) {
+    log_lik[ind]= normal_lpdf(qr_train[ind] | mu_train[ind] ,sigma);
+    gen_lik[ind]= normal_rng (mu_train[ind] ,sigma);
+  }
+}
+```
 
 ## b) Hierarchical
 
+In this model, we will divide data into group base of value of "C040" column. The data code_block is for inputing all data as training data. 
 
-```{r}
-code_hierarchial <- file("hierarchial.stan")
-writeLines(readLines(code_hierarchial))
+```{}
+data {
+  int < lower =1> N; 
+  vector [N] qr; 
+  int <lower=1> J; 
+
+  vector [J] x [N]; 
+  int C040[N]; 
+  int <lower = 0> nc; 
+}
+```
+
+We define alpha, beta and sigma as the linear section. However, hierarchical model requires hyperparameters, which is mu_coff and tau_coff for columns. tau_a and mu_a are hyperparameters for free parameter.
+
+```{}
+parameters {
+  vector[nc] alpha; 
+  vector[J] beta [nc]; 
+  real < lower =0> sigma ;
+  
+  //hyperparameters declaration
+  vector [J] mu_coff; 
+  vector <lower =0> [J] tau_coff;
+  real <lower= 0> tau_a;
+  real mu_a;
+}
+```
+
+We transform $\mu$ defined in model description as a function of parameters and data.
+
+```{}
+transformed parameters {
+  vector [N] mu;
+  for(ind in 1:N) {
+    mu[ind]= alpha[C040[ind]+1] + dot_product(x[ind,:],beta[C040[ind]+1,]');
+  }
+}
+```
+
+After defining all parameters, we set our prior and model.
+
+```{}
+model {
+  //priors
+  mu_a~normal(0,1); 
+  tau_a~ normal(0,1);
+  
+  for(j  in 1:J) {
+    mu_coff[j]~normal(0,1);
+    tau_coff[j]~ normal(0,1);
+  }
+  
+  alpha~ normal(mu_a,tau_a);
+  
+  for(j in 1:J) {
+    beta[,j] ~ normal(mu_coff[j],tau_coff[j]);
+  }
+  
+  sigma ~ normal(0,10);
+  
+  //liklihood
+  qr ~ normal (mu , sigma );
+}
+```
+
+After fitting model, we generate predictive value and log likelihood.
+
+```{}
+generated quantities {
+  //log liklihood for data set;
+  vector[N] log_lik;
+  //liklihood for the dataset
+  vector[N] gen_lik;
+  for (ind in 1:N) {
+    log_lik[ind]= normal_lpdf(qr[ind] | mu[ind] ,sigma);
+    gen_lik[ind]= normal_rng (mu[ind] ,sigma);
+  }
+}
 ```
 
 ## c) Gaussian Process Model
@@ -322,8 +474,9 @@ We also put predictive result and log likelihood function in generated_quantitie
 
 ```{}
 generated quantities {
+  vector[N1] pred_y1;
   vector[N2] y2;
-  vector[N1] log_lik_1;
+  vector[N1] log_lik;
   
   // predictive assessment
   for(n2 in 1:N2)
@@ -331,10 +484,13 @@ generated quantities {
   
   // log likelihood
   for (n1 in 1:N1)
-    log_lik_1[n1]= normal_lpdf(y1[n1] | f[n1] ,sigma );
+    log_lik[n1]= normal_lpdf(y1[n1] | f[n1] ,sigma );
+    
+  // posterior predictive check
+  for(n1 in 1:N1)
+    pred_y1[n1] = normal_rng(f[n1], sigma);
 }
 ```
-
 # 6) How the Stan model was run
 
 ## a) Linear (Non Hierarchical)
@@ -465,6 +621,7 @@ No divergences in the linear model
 
 ## Hierarchical 
 
+### 1) Traceplots
 The plots are seem to be converging.
 Only plots for alpha have been added since the plots for beta were too many to be added to this report.
 However, we have checked individual convergence for all beta. They seem to converge.
@@ -547,6 +704,8 @@ bulk_ess=monitor(extract(gaussian_process,permute=FALSE, inc_warmup=FALSE))[,'Bu
 length(which(bulk_ess < 100))
 ```
 
+BUlk ESS over 100 for all the parameters i.e reliable
+
 ### 5) Divergences
 
 ```{r}
@@ -568,7 +727,7 @@ The red lines are the plot for generated quantitative response.
 ```{r}
 # instead of log, use rng
 plot(density(QSAR$quantitative_response),main="Posterior predictive 
-     check for simple model")
+     check for Linear model")
 params<-extract(linear_model)
 for (ind in 1980:2000)
 {
@@ -660,33 +819,74 @@ arrows(true_scores,pred_scores+pred_error,true_scores,
 
 # 11) Sensitivity analysis 
 
-We now test how sensible our models are to the choice of the priors: we compared the results of Pareto-k-diagnostics for different choices of priors and the comparison is shown in the table below. After using the **weakly informative priors** previously presented, we first tested an even more **wide** and **less informative** prior for each one of the models, then we tested a biased prior, to further investigate the influence the prior has one the models. 
+We now test how sensible our models are to the choice of the priors: we compared the results of Pareto-k-diagnostics for different choices of priors and the comparison is shown in the table below. After using the **weakly informative priors** previously presented, we first tested an even more **wide** and **less informative** prior for each one of the models, then we tested a biased prior, to further investigate the influence the prior has one the models. @prior_recom
 
 Given the size of the dataset, we could expect that any prior would have little influence on the model, which would resemble instead the shape of the likelihood. This consideration is clearly reflected by the results we obtained (see the table below) for the linear and hierarchical models, while guassian model is definitely sensible to the prior choice.
- 
- 
+
+|Priors|Model|Pareto k estimates|
+|---|---|---|
+|alpha ~ normal(0,1)| Linear |all k < 0.5|
+|beta ~ normal(0,1)|||
+|sigma ~ normal(0,100)|||
+||||
+|alpha ~ normal(0,100)| Linear |all k < 0.5|
+|beta ~ normal(0,100)|||
+|sigma ~ normal(0,100)|||
+||||
+|alpha ~ normal(50,10)| Linear |all k < 0.5|
+|beta ~ normal(50,10)|||
+|sigma ~ normal(0,100)|||
+||||
+|---|---|---|
+||||
+|mu ~ normal(0,1)| Hierarchical |98.3% k < 0.5|
+|tau ~ normal(0,1)||0.7% --> 0.7 < k < 1|
+|sigma ~ normal(0,100)|||
+||||
+|mu ~ normal(0,100)| Hierarchical |97.6% k < 0.5|
+|tau ~ normal(0,100)||0.9% --> 0.7 < k < 1|
+|sigma ~ normal(0,10)|||
+||||
+|mu ~ normal(50,10)| Hierarchical |98.2% k < 0.5|
+|tau ~ normal(50,10)||1.3% --> 0.7 < k < 1|
+|sigma ~ normal(0,100)|||
+||||
+|---|---|---|
+||||
+|rho ~ inv_gamma(5,5)| Gaussian |9% k < 0.5|
+|alpha ~ normal(0,1)||49% --> 0.7 < k < 1|
+|sigma ~ normal(0,1)||7% --> k > 1|
+|eta ~ normal(0,1)|||
+||||
+|rho ~ inv_gamma(5,0.1)| Gaussian |0% k < 0.5|
+|alpha ~ normal(0,100)||97% --> 0.7 < k < 1|
+|sigma ~ normal(0,100)||3% --> k > 1|
+|eta ~ normal(0,100)|||
+||||
+|rho ~ inv_gamma(20,5)| Gaussian |0% k < 0.5|
+|alpha ~ normal(50,10)||77% --> 0.7 < k < 1|
+|sigma ~ normal(50,10)||21% --> k > 1|
+|eta ~ normal(50,10)|||
+||||
+
+
 
 
 # 12) Discussion of issues and potential improvements.
 
-1) Based on our understanding, the hierarchical model was built on the basis of C040 variable. However this model performed worse than the linear model. 
-One potential improvement can be building hierarchical model based on some other parameter like H050 or some variable. 
-Based on deep understanding on the data, a better way of hierarchical modeling can be constructed.
-
-2) For the Gaussian model which we implemented, we faced the issue of computational time. It took forever to execute our code. Thats why we chose the subset of dataset to work upon. In future maybe with the help of better computation power, we could build a better model.
+1) Based on our understanding, the hierarchical model was built on the basis of C040 variable. However this model performed worse than the linear model. In order for the hierarchical model to work properly, we need prior knowledge of the data and how to divide data into groups. Since we don't have access to that knowledge, what we can do is try different of grouping (base on selection of columns and value bins) to see how the result changes. This process might result in better understanding of how this data was constructed.	
+	
+2) For the Gaussian model, the result we received was worse from expected, which can be due to model overfitting data. We will need to look into the model closely to observe the behavior and problems. Moreover, since applying Gaussian Process Model need calculation of distance between each pair of rows, the more the data get, the more time it takes for computer to run. Therefore, this method is recommended for dataset that's not to large.
 
 
 # 13) Conclusion 
 
-1) One important thing we noticed here was that changing priors didn't change the results significantly. 
-This also comes by intuition as the dataset we used in this report was large enough for Bayesian inference. And when the dataset is large enough, priors doesnt make much difference.
+1) One important thing we noticed here was that changing priors didn't change the results significantly. This also comes by intuition as the dataset we used in this report was large enough for Bayesian inference. And when the dataset is large enough, priors doesnt make much difference.	
 
-2) We concluded that not always the complex model is better. Most often complex models fails to outperform due to lack of domain knowledge. Like in our case the hierarchical model didn't performed good as expected. Maybe it will perform better when grouping method changes, but we have to check that.
 
-The code for model is present at the following Github link, feel free to contribute.
-
+2) We concluded that not always the complex model is better. Most often complex models fails to outperform due to lack of domain knowledge. Like in our case the hierarchical model didn't performed good as expected. In order for complex models to work properly, we need to analyze dataset carefully to avoid overfitting.	
+The code for model is present at the following Github link, feel free to contribute.	
 https://github.com/PragatiGupta97/Bayesian-World-Bank-Youth-Unemployment-Rates
-
  
 
 # 14) Self-reflection of what the group learned while making the project.
@@ -699,3 +899,25 @@ https://github.com/PragatiGupta97/Bayesian-World-Bank-Youth-Unemployment-Rates
 
 # References 
 
+# Appendix
+
+## Linear Model
+
+```{r}	
+code <- file("linear_model_split.stan")	
+writeLines(readLines(code))	
+```	
+
+## Hierarchical Model	
+
+```{r}	
+code_hierarchial <- file("hierarchial.stan")	
+writeLines(readLines(code_hierarchial))	
+```	
+
+## Gaussian Process Model	
+
+```{r}	
+code_gaussian <- file("gaussian_process.stan")	
+writeLines(readLines(code_gaussian))	
+```
