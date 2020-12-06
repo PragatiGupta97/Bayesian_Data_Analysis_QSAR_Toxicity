@@ -311,7 +311,7 @@ $\frac{samples}{totalIterations}$ > 0.01 for all parameters, this means samples 
 
 ### 4) Bulk ESS and Tail ESS
 
-```{r}
+```{r, results='hide',message=FALSE}
 bulk_ess=monitor(extract(linear_model,permute=FALSE, inc_warmup=FALSE))[,'Bulk_ESS']
 length(which(bulk_ess < 100))
 ```
@@ -329,11 +329,14 @@ No divergences in the linear model
 
 ## Hierarchical 
 
-The plots are seem to be converging
+The plots are seem to be converging.
+Only plots for alpha have been added since the plots for beta were too many to be added to this report.
+However, we have checked individual convergence for all beta. They seem to converge.
 
 ```{r}
 traceplot(hierarchial, pars=c("alpha"))
-traceplot(hierarchial, pars=c("beta"),ncol=3)
+
+#traceplot(hierarchial, pars=c("beta"))
 
 
 ```
@@ -359,12 +362,13 @@ $\frac{samples}{totalIterations}$ > 0.01 for all parameters, this means samples 
 
 ### 4) Bulk ESS and Tail ESS
 
-```{r,message=FALSE}
+```{r,results='hide',message=FALSE}
 bulk_ess=monitor(extract(hierarchial,permute=FALSE, inc_warmup=FALSE))[,'Bulk_ESS']
 length(which(bulk_ess < 100))
 ```
 
 BUlk ESS  are not reliable.
+
 ### 5) Divergences
 
 
