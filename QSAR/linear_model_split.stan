@@ -1,19 +1,20 @@
 data {
 
-int < lower =1> N_train; // number of data points
-vector [N_train] qr_train;// observation year
-int <lower=1> J;
-vector [J] x_train [N_train];
+int < lower =1> N_train; // number of data points in train set
+vector [N_train] qr_train;// quantitative response for train set 
+int <lower=1> J; //number of features
+vector [J] x_train [N_train]; //train dataset of explanatory variables
 
-int < lower =1> N_test; // number of data points to be predicted
+int < lower =1> N_test; //number of data points in test set
 
-vector [J] x_test [N_test];
+vector [J] x_test [N_test];///train dataset of explanatory variables
 
 
 }
 parameters {
   real alpha;
-  vector [J] beta;
+  vector [J] beta; 
+  //beta is the vector containing cofficients for 8 exlanatory variables
   real < lower =0> sigma ;
 }
 transformed parameters {
@@ -30,9 +31,13 @@ qr_train ~ normal (mu_train , sigma );
 }
 generated quantities {
 
+// mu vector for test set
 vector [N_test] mu_test;
+//predicting the quantitive response for test set
 vector [N_test] qr_test;
+//log liklihood for train set
 vector[N_train] log_lik;
+//liklihood for train set
 vector[N_train] gen_lik;
 
 for (i in 1:N_test)

@@ -43,21 +43,22 @@ set.seed(123)
 
 # 1) Introduction
 
-This report presents how to detect the "Quantitative Response" using Bayesian Inference.Bayesian modeling provides a principled way to quantify uncertainty and incorporate prior knowledge into the model. What is more, **Stan**’s main inference engine, **Hamiltonian Monte Carlo sampling**, is friendly to diagnostics, which means we can verify whether our inference is reliable. Stan is an expressive probabilistic programing language that abstracts the inference and allows users to focus on the modeling. The resulting code is readable and easily extensible, which makes the modeler’s work more transparent and flexible.
+This report presents how to detect the "Quantitative Response" using Bayesian Inference.Bayesian modeling provides a principled way to quantify uncertainty and incorporate prior knowledge into the model. 
+
+What is more, **Stan**’s main inference engine, **Hamiltonian Monte Carlo sampling**, is friendly to diagnostics, which means we can verify whether our inference is reliable. Stan is an expressive probabilistic programing language that abstracts the inference and allows users to focus on the modeling. The resulting code is readable and easily extensible, which makes the modeler’s work more transparent and flexible.
+
+
 For this project **QSAR aquatic toxicity Data Set** has been chosen.
 
-
-**QSAR toxicity **
-
-```{r}
-QSAR <- read.csv(file = 'qsar_aquatic_toxicity.csv')
-colnames(QSAR)
-```
 
 ## Motivation
 
 This dataset was used to develop quantitative regression QSAR models to predict acute aquatic toxicity towards the fish Pimephales promelas (fathead minnow) on a set of 908 chemicals. 
+
+
 To predict acute aquatic toxicity towards Daphnia Magna, LC50 data, which is the concentration that causes death in 50% of test D. magna over a test duration of 48 hours, was used as model response. 
+
+
 The model comprised 8 molecular descriptors: TPSA(Tot) (Molecular properties), SAacc (Molecular properties), H-050 (Atom-centred fragments), MLOGP (Molecular properties), RDCHI (Connectivity indices), GATS1p (2D autocorrelations), nN (Constitutional indices), C-040 (Atom-centred fragments).
 
 
@@ -67,12 +68,28 @@ The model comprised 8 molecular descriptors: TPSA(Tot) (Molecular properties), S
 
 ## Modeling idea
 
-In this report, We focus on Bayesian inference with MCMC. Bayesian inference gives us a principled quantification of uncertainty and the ability to incorporate domain knowledge in the form of priors, while MCMC is a reliable and flexible algorithm. In addition, Stan provides diagnostic tools to evaluate both the inference (e.g. accuracy of the MCMC, convergence of chains) and the model (e.g. posterior predictive checks).
+In this report, We focus on Bayesian inference with MCMC. Bayesian inference gives us a principled quantification of uncertainty and the ability to incorporate domain knowledge in the form of priors, while MCMC is a reliable and flexible algorithm. 
+
+In addition, Stan provides diagnostic tools to evaluate both the inference (e.g. accuracy of the MCMC, convergence of chains) and the model (e.g. posterior predictive checks).
+
+This reports use # different type of models i.e
+
+1) Linear Model
+2) Hierarchial Model
+3) Gaussian Process
+
+Further section explains How to the Stan model was run, Convergence diagnostics,Posterior predictive checks,Model comparison (e.g. with LOO-CV),Predictive performance assessment,Sensitivity analysis with respect to prior choices, all these steps has been performed separately on these 3 models
 
 ## Illustrative figure 
 
-Lets visualizing the density plot of each variable in order to check the range of the  variables in the dataset 
+Lets visualizing the density plot of each variable in order to check the range of the  variables in the dataset
+
+**QSAR toxicity Dataset**
+
 ```{r}
+
+QSAR <- read.csv(file = 'qsar_aquatic_toxicity.csv')
+colnames(QSAR)
 par(mfrow=c(3,3))
 cols = colnames(QSAR)
 
@@ -84,10 +101,22 @@ plot(density(QSAR[col][,1]), main=col)
 
 ```
 
+Now lets visualize the pair plot in order to see if there is any collinearity in the data set or not.
+
+```{r}
+#PairPlot(QSAR, colnames(QSAR)[1:8], "Pair Plotting of each pair of features", alpha = 0.8,  point_color = "blue")
+pairs(QSAR[,1:8], pch = 18,  cex = 0.4, col = "#FC4E07", lower.panel=NULL)
+#heatmap(as.matrix(QSAR))
+#boxplot.default(QSAR, horizontal = TRUE)
+```
+
 # 2) Description of the data and the analysis problem. 
 
-the dataset has been obtained from UCI dataset archives (https://archive.ics.uci.edu/ml/datasets/QSAR+aquatic+toxicity)
+The dataset has been obtained from UCI dataset archives
 
+(https://archive.ics.uci.edu/ml/datasets/QSAR+aquatic+toxicity)
+
+The following table explains the explanatory and the target variables present in the dataset
 
 |feature number|Feature name|Feature Description|
 |---|---|---|
@@ -99,44 +128,62 @@ the dataset has been obtained from UCI dataset archives (https://archive.ics.uci
 | 6 |GATS1p|2D autocorrelations|
 | 7 |nN|Constitutional indices|
 | 8 |C040|Atom-centred fragments|
-| 9 |acute aquatic toxicity|
-
-```{r}
-PairPlot(QSAR, colnames(QSAR)[1:8], "Pair Plotting of each pair of features", alpha = 0.8,  point_color = "blue")
-pairs(QSAR[,1:8], pch = 18,  cex = 0.4, col = "#FC4E07", lower.panel=NULL)
-```
-
-```{r}
-heatmap(as.matrix(QSAR))
-boxplot.default(QSAR, horizontal = TRUE)
-```
+| 9 |Quantitative Response|acute aquatic toxicity|
 
 
-```{r}	
-PairPlot(QSAR, colnames(QSAR)[1:8], "Pair Plotting of each pair of features", alpha = 0.8,  point_color = "blue")	
-pairs(QSAR[,1:8], pch = 18,  cex = 0.4, col = "#FC4E07", lower.panel=NULL)	
-```	
+In order, to analyze the problem in detail, the linear Regression model has been implemented. This has been implemented so that later the bayesian models can be compared with this linear regression model. This model gave us the base estimate and helped in visualizing the data more effectively.
 
-```{r}	
-heatmap(as.matrix(QSAR))	
-boxplot.default(QSAR, horizontal = TRUE)	
-```
-
+Clearly we can see almost all the variables are statistically significant. 
 
 ```{r}
 #creating linear model
 fullmodel=lm(quantitative_response~TSPA+Saacc+H050+MLOGP+RDCHI+GATS1p+nN+C040, data =QSAR)
 summary(fullmodel)
-plot(QSAR$quantitative_response,fullmodel$res, ylab="e_bar", xlab="y_bar", main="Residual plot")
-abline(0,0)
+#plot(QSAR$quantitative_response,fullmodel$res, ylab="e_bar", xlab="y_bar", main="Residual plot")
+#abline(0,0)
 ```
 
-# 3) Description of the two models used
+
+# 3) Description of the 3 models used
+
+For the sake of this project, we have implemented Linear(Non Hierarchial), Hierarchical model and Gaussian Process
 
 ## a) Linear (Non Heirarchial)
 
+In the linear model, quantitative response is normally distributed with mean mu and variance sigma.
+Mean mu is computed by the dot product between coeffiencients and explanatory variables.
 
-## b) hierarchical,
+$QuantitativeResponse_{i}$ ~ $\mathcal{N}$ ($\mu$ ,$sigma$ )
+
+**where**
+
+$\mu$ = alpha + beta[1] * TSPA + beta[2] * Saacc + beta[3] * H050 + beta[4] * MLOGP+  beta[5] * RDCHI +beta[6] * GATS1p + beta[7] * nN
++ beta[8] * C040;
+
+which is written in stan code like the following for simplicity
+
+$\mu_{i}$ = alpha + dot_product($x_{i,:}$,Transpose(beta));
+
+Here alpha and beta are the prior which are used in this linear model where alpha is a real number and beta is vector of real numbers.
+
+## b) Hierarchical
+
+In the hierarchial model, the data has been categoried according to C040 explanatory variables. C040 represents the number of carbon atoms.
+After thorough reading of research papers, our team analysed the C040 maybe be an interesting variable.
+Therefore hierarchial model has been constructed based on C040, i.e C040 will decide the prior based on C040 variable.
+
+In the hierarchial model, quantitative response is normally distributed with mean mu and variance sigma similar to linear model.
+
+$QuantitativeResponse_{i}$ ~ $\mathcal{N}$ ($\mu$ ,$sigma$ )
+
+However, the major difference here is of mu and the priors . Here 
+
+$\mu_{i}$= $alpha[C040_{i+1}] + dotProduct(x_{ind,:},beta[C040_{ind+1},]')$
+
+This means mu is dependent on the the coffient alpha and beta which maps to corresponsing C040 value.
+
+Here alpha is vector of dimension NC(i.e number of distinct values of C040) and beta is a matrix of dimension NCxJ (number of distinct values of C040 X explanaory variables)
+
 
 
 # 4) Informative or weakly informative priors
