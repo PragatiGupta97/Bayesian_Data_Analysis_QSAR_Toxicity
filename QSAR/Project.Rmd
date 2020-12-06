@@ -72,7 +72,7 @@ In this report, We focus on Bayesian inference with MCMC. Bayesian inference giv
 
 In addition, Stan provides diagnostic tools to evaluate both the inference (e.g. accuracy of the MCMC, convergence of chains) and the model (e.g. posterior predictive checks).
 
-This reports use # different type of models i.e
+This reports use 3 different type of models i.e
 
 1) Linear Model
 2) Hierarchial Model
@@ -104,7 +104,8 @@ plot(density(QSAR[col][,1]), main=col)
 Now lets visualize the pair plot in order to see if there is any collinearity in the data set or not.
 
 ```{r}
-#PairPlot(QSAR, colnames(QSAR)[1:8], "Pair Plotting of each pair of features", alpha = 0.8,  point_color = "blue")
+#PairPlot(QSAR, colnames(QSAR)[1:8], 
+#"Pair Plotting of each pair of features", alpha = 0.8,  point_color = "blue")
 pairs(QSAR[,1:8], pch = 18,  cex = 0.4, col = "#FC4E07", lower.panel=NULL)
 #heatmap(as.matrix(QSAR))
 #boxplot.default(QSAR, horizontal = TRUE)
@@ -139,7 +140,8 @@ Clearly we can see almost all the variables are statistically significant.
 #creating linear model
 fullmodel=lm(quantitative_response~TSPA+Saacc+H050+MLOGP+RDCHI+GATS1p+nN+C040, data =QSAR)
 summary(fullmodel)
-#plot(QSAR$quantitative_response,fullmodel$res, ylab="e_bar", xlab="y_bar", main="Residual plot")
+#plot(QSAR$quantitative_response,fullmodel$res,
+#ylab="e_bar", xlab="y_bar", main="Residual plot")
 #abline(0,0)
 ```
 
@@ -162,17 +164,17 @@ $\mu$ = alpha + beta[1] * TSPA + beta[2] * Saacc + beta[3] * H050 + beta[4] * ML
 
 which is written in stan code like the following for simplicity
 
-$\mu_{i}$ = alpha + dot_product($x_{i,:}$,Transpose(beta));
+$\mu_{i}$ = alpha + dotProduct($x_{i,:}$,Transpose(beta));
 
 Here alpha and beta are the prior which are used in this linear model where alpha is a real number and beta is vector of real numbers.
 
 ## b) Hierarchical
 
-In the hierarchial model, the data has been categoried according to C040 explanatory variables. C040 represents the number of carbon atoms.
+In the hierarchical model, the data has been categoried according to C040 explanatory variables. C040 represents the number of carbon atoms.
 After thorough reading of research papers, our team analysed the C040 maybe be an interesting variable.
-Therefore hierarchial model has been constructed based on C040, i.e C040 will decide the prior based on C040 variable.
+Therefore hierarchical model has been constructed based on C040, i.e C040 will decide the prior based on C040 variable.
 
-In the hierarchial model, quantitative response is normally distributed with mean mu and variance sigma similar to linear model.
+In the hierarchical model, quantitative response is normally distributed with mean mu and variance sigma similar to linear model.
 
 $QuantitativeResponse_{i}$ ~ $\mathcal{N}$ ($\mu$ ,$sigma$ )
 
@@ -180,10 +182,9 @@ However, the major difference here is of mu and the priors . Here
 
 $\mu_{i}$= $alpha[C040_{i+1}] + dotProduct(x_{ind,:},beta[C040_{ind+1},]')$
 
-This means mu is dependent on the the coffient alpha and beta which maps to corresponsing C040 value.
+This means mu is dependent on the the coefficient alpha and beta which maps to corresponding C040 value.
 
-Here alpha is vector of dimension NC(i.e number of distinct values of C040) and beta is a matrix of dimension NCxJ (number of distinct values of C040 X explanaory variables)
-
+Here alpha is vector of dimension NC(i.e number of distinct values of C040) and beta is a matrix of dimension NC x J (number of distinct values of C040 X explanatory variables)
 
 
 # 4) Informative or weakly informative priors
@@ -210,7 +211,7 @@ writeLines(readLines(code_hierarchial))
 ```
 
 
-# 6) How to the Stan model was run
+# 6) How the Stan model was run
 
 that is, what options were used. This is also more clear as combination of textual explanation and the actual code line.
 
@@ -260,15 +261,17 @@ hierarchial <-stan(file = 'hierarchial.stan' , data = qsar_data, chains=4,
 # 7) Convergence diagnostics 
 
 Here we will discuss 5 types of convergence tests
-- Traceplots
-- $\hat{R}$
-- $n_{eff}$
-- Bulk ESS and Tail ESS
-- Divergences
+* Traceplots
+* $\hat{R}$
+* $n_{eff}$
+* Bulk ESS and Tail ESS
+* Divergences
 
 ## Linear (Non Heirarchial)
 
 ### 1) Traceplots
+
+The traceplots clearly show that the parameters have converged.
 
 ```{r}
 traceplot(linear_model, pars=c("alpha","beta"))
@@ -276,6 +279,10 @@ traceplot(linear_model, pars=c("alpha","beta"))
 
 ### 2) $\hat{R}$
 
+```{r}
+Rhat_linear= summary(linear_model)$summary[,'Rhat']
+print(max(Rhat_linear))
+```
 From printed output we can see that $\hat{R}$ < 1.01 for all the parameters
 
 ### 3) $n_{eff}$
@@ -287,7 +294,7 @@ val=neff/1000
 which(val < 0.01)
 ```
 
-samples/ total iterations > 0.01, this means samples are not biased and true effect of sample size is not overestimated.
+$\frac{samples}{totalIterations}$ > 0.01 for all parameters, this means samples are not biased and true effect of sample size is not overestimated.
 
 ### 4) Bulk ESS and Tail ESS
 
@@ -299,7 +306,7 @@ BUlk ESS and tail ess over 100 for all the parameters
 get_num_divergent(linear_model)
 ```
 
-No divergences in the pairplot
+No divergences in the linear model
 
 
 ## Heirarchial 
@@ -310,7 +317,11 @@ traceplot(hierarchial, pars=c("alpha","beta"))
 
 ### 2) $\hat{R}$
 
-From printed output we can see that $\hat{R}$ < 1.06 for all the parameters
+```{r}
+Rhat_h= summary(hierarchial)$summary[,'Rhat']
+print(max(Rhat_h))
+```
+From printed output we can see that $\hat{R}$ < 1.03 for all the parameters. This implies Hierarchial model have not converged properly.
 
 ### 3) $n_{eff}$
 
@@ -318,27 +329,23 @@ From printed output we can see that $\hat{R}$ < 1.06 for all the parameters
 neff=summary(hierarchial)$summary[,'n_eff']
 val=neff/2000 
 #print(val)
-count(which(val < 0.01))
+length(which(val < 0.01))
 ```
 
-samples/ total iterations > 0.01, this means samples are not biased and true effect of sample size is not overestimated.
+$\frac{samples}{totalIterations}$ > 0.01 for all parameters, this means samples are not biased and true effect of sample size is not overestimated.
 
 ### 4) Bulk ESS and Tail ESS
 
-BUlk ESS and tail ess over 100 for all the parameters
-
+BUlk ESS and tail ess are not reliable.
 ### 5) Divergences
 
-```{r}
-#pairs(model_simple,pars=c("a","b","c","d","e","f","g","h","i"))
-```
 
 ```{r}
 get_num_divergent(hierarchial)
 ```
 
 Initially the divergences were more than 1000, 
-but after setting the adapt_delta=0.95, the divergences were reduced.
+but after setting the **adapt_delta=0.95**, the divergences were reduced.
 So we eavaluated the hierarchial model was not satisafactory.
 
 
