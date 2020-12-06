@@ -40,6 +40,9 @@ set.seed(123)
 
 # 1) Introduction
 
+This report presents how to detect the "Quantitative Response" using Bayesian Inference.Bayesian modeling provides a principled way to quantify uncertainty and incorporate prior knowledge into the model. What is more, **Stan**’s main inference engine, **Hamiltonian Monte Carlo sampling**, is friendly to diagnostics, which means we can verify whether our inference is reliable. Stan is an expressive probabilistic programing language that abstracts the inference and allows users to focus on the modeling. The resulting code is readable and easily extensible, which makes the modeler’s work more transparent and flexible.
+For this project **QSAR aquatic toxicity Data Set** has been chosen.
+
 
 **QSAR toxicity **
 
@@ -50,25 +53,22 @@ colnames(QSAR)
 
 ## Motivation
 
+This dataset was used to develop quantitative regression QSAR models to predict acute aquatic toxicity towards the fish Pimephales promelas (fathead minnow) on a set of 908 chemicals. 
+To predict acute aquatic toxicity towards Daphnia Magna, LC50 data, which is the concentration that causes death in 50% of test D. magna over a test duration of 48 hours, was used as model response. 
+The model comprised 8 molecular descriptors: TPSA(Tot) (Molecular properties), SAacc (Molecular properties), H-050 (Atom-centred fragments), MLOGP (Molecular properties), RDCHI (Connectivity indices), GATS1p (2D autocorrelations), nN (Constitutional indices), C-040 (Atom-centred fragments).
+
+
 ## The problem
+
+
 
 ## Modeling idea
 
-We want our predictions of the linear model to be close to the linear model
-
-```{r}
-#creating linear model
-fullmodel=lm(quantitative_response~TSPA+Saacc+H050+MLOGP+RDCHI+GATS1p+nN+C040, data =QSAR)
-summary(fullmodel)
-plot(QSAR$quantitative_response,fullmodel$res, ylab="e_bar", xlab="y_bar", main="Residual plot")
-abline(0,0)
-```
-
+In this report, We focus on Bayesian inference with MCMC. Bayesian inference gives us a principled quantification of uncertainty and the ability to incorporate domain knowledge in the form of priors, while MCMC is a reliable and flexible algorithm. In addition, Stan provides diagnostic tools to evaluate both the inference (e.g. accuracy of the MCMC, convergence of chains) and the model (e.g. posterior predictive checks).
 
 ## Illustrative figure 
 
-Visualizing the density plot of each variable
-
+Lets visualizing the density plot of each variable in order to check the range of the  variables in the dataset 
 ```{r}
 par(mfrow=c(3,3))
 cols = colnames(QSAR)
@@ -83,23 +83,34 @@ plot(density(QSAR[col][,1]), main=col)
 
 # 2) Description of the data and the analysis problem. 
 
-Provide information where the data was obtained, and if it has been previously used in some online case study and how your analysis differs from the existing analyses.
+the dataset has been obtained from UCI dataset archives (https://archive.ics.uci.edu/ml/datasets/QSAR+aquatic+toxicity)
+
 
 |feature number|Feature name|Feature Description|
 |---|---|---|
-| 1 |TSPA|31.51109|
-| 2 |SAACC|13.74853|
-| 3 |H050|25.01827|
-| 4 |MLOGP|11.12849|
-| 5 |RDCHI|14.39153|
-| 6 |GATS1p|14.39153|
-| 7 |nN|14.39153|
-| 8 |C040|14.39153|
-| 9 |Quantitative Response|14.39153|
+| 1 |TSPA|Tot Molecular properties|
+| 2 |SAACC|Molecular properties|
+| 3 |H050|Atom-centred fragments|
+| 4 |MLOGP|Molecular properties|
+| 5 |RDCHI|Connectivity indices|
+| 6 |GATS1p|2D autocorrelations|
+| 7 |nN|Constitutional indices|
+| 8 |C040|Atom-centred fragments|
+| 9 |acute aquatic toxicity|
 
-# 3) Description of at least two models, for example:
+
+```{r}
+#creating linear model
+fullmodel=lm(quantitative_response~TSPA+Saacc+H050+MLOGP+RDCHI+GATS1p+nN+C040, data =QSAR)
+summary(fullmodel)
+plot(QSAR$quantitative_response,fullmodel$res, ylab="e_bar", xlab="y_bar", main="Residual plot")
+abline(0,0)
+```
+
+# 3) Description of the two models used
 
 ## a) non hierarchical(linear)
+
 
 ## b) hierarchical,
 
@@ -135,18 +146,22 @@ that is, what options were used. This is also more clear as combination of textu
 ## a) non hierarchical(linear)
 
 ```{r}
-TSPA=QSAR$TSPA
-Saacc=QSAR$Saacc
-H050=QSAR$H050
-MLOGP=QSAR$MLOGP
-RDCHI=QSAR$RDCHI
-GATS1p=QSAR$GATS1p
-nN=QSAR$nN
-C040=QSAR$C040
+#TSPA=QSAR$TSPA
+#Saacc=QSAR$Saacc
+#H050=QSAR$H050
+#MLOGP=QSAR$MLOGP
+
+#RDCHI=QSAR$RDCHI
+#GATS1p=QSAR$GATS1p
+#nN=QSAR$nN
+#C040=QSAR$C040
 qr=QSAR$quantitative_response
+x= QSAR[,1:(dim(QSAR)[2]-1)]
+J=(dim(QSAR)[2]-1)
 n=dim(QSAR)[1]
 
-qsar_data <-list(N=n,qr=qr,TSPA=TSPA,Saacc=Saacc,H050=H050,MLOGP=MLOGP,RDCHI=RDCHI,GATS1p=GATS1p,nN=nN,C040=C040)
+#qsar_data <-list(N=n,qr=qr,TSPA=TSPA,Saacc=Saacc,H050=H050,MLOGP=MLOGP,RDCHI=RDCHI,GATS1p=GATS1p,nN=nN,C040=C040)
+qsar_data <-list(N=n,J=J,qr=qr,x=x)
 
 model_simple <-stan(file = 'QSARproject.stan' , data = qsar_data, chains=4, iter=1000)
 #print(model_simple)
