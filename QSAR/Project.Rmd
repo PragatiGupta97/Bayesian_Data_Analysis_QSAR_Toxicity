@@ -31,6 +31,9 @@ library(aaltobda)
 library(rstan)
 library(bayesplot)
 library(loo)
+library(WVPlots)
+library(latticeExtra)
+library(sfsmisc)
 options(mc.cores = parallel::detectCores(),control = list(max_treedepth = 11))
 rstan_options(auto_write = TRUE)
 set.seed(123)
@@ -99,6 +102,17 @@ the dataset has been obtained from UCI dataset archives (https://archive.ics.uci
 | 9 |acute aquatic toxicity|
 
 
+```{r}	
+PairPlot(QSAR, colnames(QSAR)[1:8], "Pair Plotting of each pair of features", alpha = 0.8,  point_color = "blue")	
+pairs(QSAR[,1:8], pch = 18,  cex = 0.4, col = "#FC4E07", lower.panel=NULL)	
+```	
+
+```{r}	
+heatmap(as.matrix(QSAR))	
+boxplot.default(QSAR, horizontal = TRUE)	
+```
+
+
 ```{r}
 #creating linear model
 fullmodel=lm(quantitative_response~TSPA+Saacc+H050+MLOGP+RDCHI+GATS1p+nN+C040, data =QSAR)
@@ -109,7 +123,7 @@ abline(0,0)
 
 # 3) Description of the two models used
 
-## a) non hierarchical(linear)
+## a) Linear (Non Heirarchial)
 
 
 ## b) hierarchical,
@@ -120,7 +134,7 @@ and justification of their choices.
 
 
 # 5) Stan code 
-## a) non hierarchical(linear)
+## a) Linear (Non Heirarchial)
 
 
 **Stan Code**
@@ -143,7 +157,7 @@ writeLines(readLines(code_hierarchial))
 
 that is, what options were used. This is also more clear as combination of textual explanation and the actual code line.
 
-## a) non hierarchical(linear)
+## a) Linear (Non Heirarchial)
 
 ```{r}
 
@@ -156,9 +170,11 @@ x_train= QSAR[1:N_train,1:(dim(QSAR)[2]-1)]
 #N_test
 x_test= QSAR[(N_train+1):n,1:(dim(QSAR)[2]-1)]
 
-qsar_data_check <-list(N_train=N_train,qr_train=qr_train,J=J,x_train=x_train,N_test=N_test, x_test=x_test)
+qsar_data_check <-list(N_train=N_train,qr_train=qr_train,
+                       J=J,x_train=x_train,N_test=N_test, x_test=x_test)
 
-linear_model <-stan(file = 'linear_model_split.stan' , data = qsar_data_check, chains=4, iter=1000)
+linear_model <-stan(file = 'linear_model_split.stan' ,
+                    data = qsar_data_check, chains=4, iter=1000)
 params=extract(linear_model, permuted=FALSE, inc_warmup=TRUE)
 
 ```
@@ -178,7 +194,8 @@ nc = length(unique(QSAR$C040))
 
 qsar_data <-list(N=n,qr=qr,J=J,x=x,C040=C040,nc=nc)
 
-hierarchial <-stan(file = 'hierarchial.stan' , data = qsar_data, chains=4, iter=2000)
+hierarchial <-stan(file = 'hierarchial.stan' , data = qsar_data, chains=4,
+                   iter=2000, control=list(adapt_delta=0.95))
 #print(hierarchial)
 ```
 
@@ -192,7 +209,7 @@ Here we will discuss 5 types of convergence tests
 - Bulk ESS and Tail ESS
 - Divergences
 
-## Heirarchial 
+## Linear (Non Heirarchial)
 
 ### 1) Traceplots
 
@@ -222,7 +239,6 @@ BUlk ESS and tail ess over 100 for all the parameters
 ### 5) Divergences
 
 ```{r}
-#pairs(model_simple,pars=c("a","b","c","d","e","f","g","h","i"))
 get_num_divergent(linear_model)
 ```
 
@@ -232,9 +248,7 @@ No divergences in the pairplot
 ## Heirarchial 
 
 ```{r}
-
-#mcmc_trace(as.array(model_simple), pars = c("a","b","c","d","e","f","g","h","i"), facet_args = list(nrow = 3))
-traceplot(hierarchial, pars=c("a","b","c","d","e","f","g","h"))
+traceplot(hierarchial, pars=c("alpha","beta"))
 ```
 
 ### 2) $\hat{R}$
@@ -247,7 +261,7 @@ From printed output we can see that $\hat{R}$ < 1.06 for all the parameters
 neff=summary(hierarchial)$summary[,'n_eff']
 val=neff/2000 
 #print(val)
-which(val < 0.01)
+count(which(val < 0.01))
 ```
 
 samples/ total iterations > 0.01, this means samples are not biased and true effect of sample size is not overestimated.
@@ -266,19 +280,20 @@ BUlk ESS and tail ess over 100 for all the parameters
 get_num_divergent(hierarchial)
 ```
 
-Initially the divergences were 552, 
-but after setting the adapt_delta=0.95, the divergences were reduced to 408.
+Initially the divergences were more than 1000, 
+but after setting the adapt_delta=0.95, the divergences were reduced.
 So we eavaluated the hierarchial model was not satisafactory.
 
 
 
 # 8) Posterior predictive checks
 
-## Non-Heirarchial 
+## Linear (Non Heirarchial)l 
 and what was done to improve the model.
 ```{r}
 # instead of log, use rng
-plot(density(QSAR$quantitative_response),main="Posterior predictive check for simple model")
+plot(density(QSAR$quantitative_response),main="Posterior predictive 
+     check for simple model")
 params<-extract(linear_model)
 for (ind in 1980:2000)
 {
@@ -304,7 +319,7 @@ for (ind in 3980:4000)
 
 
 
-## Non Heirarchial 
+## Linear (Non Heirarchial)
 ```{r}
 loo_model_linear <- loo(extract_log_lik(linear_model))
 print(loo_model_linear)
@@ -332,7 +347,8 @@ pred_error = sapply(1:N_test, function(x) sd(new_params$qr_test[,x]))
 true_scores = QSAR$quantitative_response[(N_train+1):n]
 plot(true_scores,pred_scores,xlim=range(1:10), ylim=range(1:10))
 abline(a=0,b=1,lty="dashed")
-arrows(true_scores,pred_scores+pred_error,true_scores,pred_scores-pred_error, length =0.05, angle = 90, code =3)
+arrows(true_scores,pred_scores+pred_error,true_scores,
+       pred_scores-pred_error, length =0.05, angle = 90, code =3)
 
 ```
 # 11) Sensitivity analysis 

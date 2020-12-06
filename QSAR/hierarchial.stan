@@ -27,12 +27,12 @@ transformed parameters {
   
 }
 model {
-mu_a~normal(0,0.1);
+mu_a~normal(0,1);
 tau_a~ normal(0,1);
 
 for(j  in 1:J)
 {
-mu_coff[j]~normal(0,0.1);
+mu_coff[j]~normal(0,1);
 tau_coff[j]~ normal(0,1);
 }
 
