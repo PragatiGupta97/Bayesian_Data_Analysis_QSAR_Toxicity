@@ -239,7 +239,7 @@ params=extract(linear_model, permuted=FALSE, inc_warmup=TRUE)
 
 
 ## b) hierarchical
-```{r}
+```{r, warning=FALSE}
 
 
 n=dim(QSAR)[1]

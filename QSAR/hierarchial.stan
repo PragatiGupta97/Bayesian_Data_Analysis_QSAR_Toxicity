@@ -31,7 +31,7 @@ transformed parameters {
 }
 model {
 //setting priors for paramters and hyperparameters
-mu_a~normal(0,1);
+mu_a~normal(0,1); 
 tau_a~ normal(0,1);
 
 for(j  in 1:J)

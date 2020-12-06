@@ -24,8 +24,13 @@ transformed parameters {
   
 }
 model {
-
-sigma ~ normal(0,100);
+//priors
+alpha~ normal(0,1);
+for(j in 1:J)
+{
+beta[j]~normal(0,1);
+}
+sigma ~ normal(0,100); 
 qr_train ~ normal (mu_train , sigma );
 
 }
