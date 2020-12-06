@@ -125,7 +125,7 @@ and justification of their choices.
 
 **Stan Code**
 ```{r}
-code <- file("QSARproject.stan")
+code <- file("linear_model_split.stan")
 writeLines(readLines(code))
 ```
 
@@ -146,46 +146,41 @@ that is, what options were used. This is also more clear as combination of textu
 ## a) non hierarchical(linear)
 
 ```{r}
-#TSPA=QSAR$TSPA
-#Saacc=QSAR$Saacc
-#H050=QSAR$H050
-#MLOGP=QSAR$MLOGP
 
-#RDCHI=QSAR$RDCHI
-#GATS1p=QSAR$GATS1p
-#nN=QSAR$nN
-#C040=QSAR$C040
-qr=QSAR$quantitative_response
-x= QSAR[,1:(dim(QSAR)[2]-1)]
-J=(dim(QSAR)[2]-1)
+N_test=20
 n=dim(QSAR)[1]
+N_train = n-N_test
+qr_train=QSAR$quantitative_response[1:N_train]
+J=(dim(QSAR)[2]-1)
+x_train= QSAR[1:N_train,1:(dim(QSAR)[2]-1)]
+#N_test
+x_test= QSAR[(N_train+1):n,1:(dim(QSAR)[2]-1)]
 
-#qsar_data <-list(N=n,qr=qr,TSPA=TSPA,Saacc=Saacc,H050=H050,MLOGP=MLOGP,RDCHI=RDCHI,GATS1p=GATS1p,nN=nN,C040=C040)
-qsar_data <-list(N=n,J=J,qr=qr,x=x)
+qsar_data_check <-list(N_train=N_train,qr_train=qr_train,J=J,x_train=x_train,N_test=N_test, x_test=x_test)
 
-model_simple <-stan(file = 'QSARproject.stan' , data = qsar_data, chains=4, iter=1000)
-#print(model_simple)
-params=extract(model_simple, permuted=FALSE, inc_warmup=TRUE)
+linear_model <-stan(file = 'linear_model_split.stan' , data = qsar_data_check, chains=4, iter=1000)
+params=extract(linear_model, permuted=FALSE, inc_warmup=TRUE)
+
 ```
 
 
 ## b) hierarchical
 ```{r}
-TSPA=QSAR$TSPA
-Saacc=QSAR$Saacc
-H050=QSAR$H050
-MLOGP=QSAR$MLOGP
-RDCHI=QSAR$RDCHI
-GATS1p=QSAR$GATS1p
-nN=QSAR$nN
-C040=as.integer(QSAR$C040)
-qr=QSAR$quantitative_response
-n=dim(QSAR)[1]
-nc = length(unique(QSAR$C040))
-
-qsar_data <-list(N=n,qr=qr,TSPA=TSPA,Saacc=Saacc,H050=H050,MLOGP=MLOGP,RDCHI=RDCHI,GATS1p=GATS1p,nN=nN,C040=C040,nc=nc)
-
-hierarchial <-stan(file = 'hierarchial.stan' , data = qsar_data, chains=4, iter=2000)
+# TSPA=QSAR$TSPA
+# Saacc=QSAR$Saacc
+# H050=QSAR$H050
+# MLOGP=QSAR$MLOGP
+# RDCHI=QSAR$RDCHI
+# GATS1p=QSAR$GATS1p
+# nN=QSAR$nN
+# C040=as.integer(QSAR$C040)
+# qr=QSAR$quantitative_response
+# n=dim(QSAR)[1]
+# nc = length(unique(QSAR$C040))
+# 
+# qsar_data <-list(N=n,qr=qr,TSPA=TSPA,Saacc=Saacc,H050=H050,MLOGP=MLOGP,RDCHI=RDCHI,GATS1p=GATS1p,nN=nN,C040=C040,nc=nc)
+# 
+# hierarchial <-stan(file = 'hierarchial.stan' , data = qsar_data, chains=4, iter=2000)
 #print(hierarchial)
 ```
 
@@ -204,9 +199,7 @@ Here we will discuss 5 types of convergence tests
 ### 1) Traceplots
 
 ```{r}
-
-#mcmc_trace(as.array(model_simple), pars = c("a","b","c","d","e","f","g","h","i"), facet_args = list(nrow = 3))
-traceplot(model_simple, pars=c("alpha","beta"))
+traceplot(linear_model, pars=c("alpha","beta"))
 ```
 
 ### 2) $\hat{R}$
@@ -216,7 +209,7 @@ From printed output we can see that $\hat{R}$ < 1.01 for all the parameters
 ### 3) $n_{eff}$
 
 ```{r}
-neff=summary(model_simple)$summary[,'n_eff']
+neff=summary(linear_model)$summary[,'n_eff']
 val=neff/1000 
 #print(val)
 which(val < 0.01)
@@ -232,10 +225,7 @@ BUlk ESS and tail ess over 100 for all the parameters
 
 ```{r}
 #pairs(model_simple,pars=c("a","b","c","d","e","f","g","h","i"))
-```
-
-```{r}
-get_num_divergent(model_simple)
+get_num_divergent(linear_model)
 ```
 
 No divergences in the pairplot
@@ -291,7 +281,7 @@ and what was done to improve the model.
 ```{r}
 # instead of log, use rng
 plot(density(QSAR$quantitative_response),main="Posterior predictive check for simple model")
-params<-extract(model_simple)
+params<-extract(linear_model)
 for (ind in 1980:2000)
 {
   lines(density(params$gen_lik[ind,]), col='red');
@@ -318,9 +308,9 @@ for (ind in 3980:4000)
 
 ## Non Heirarchial 
 ```{r}
-loo_model_simple <- loo(extract_log_lik(model_simple))
-print(loo_model_simple)
-plot(loo_model_simple, main = "PSIS Diagonostic for simple Model")
+loo_model_linear <- loo(extract_log_lik(linear_model))
+print(loo_model_linear)
+plot(loo_model_linear, main = "PSIS Diagonostic for simple Model")
 ```
 ## Hierarchial 
 
@@ -336,26 +326,9 @@ plot(loo_model_hierarchial, main = "PSIS Diagonostic for Heirarchial Model")
 
 if applicable (e.g. classification accuracy) and evaluation of practical usefulness of the accuracy.
 
-```{r}
-
-N_test=20
-n=dim(QSAR)[1]
-
-N_train = n-N_test
-qr_train=QSAR$quantitative_response[1:N_train]
-J=(dim(QSAR)[2]-1)
-x_train= QSAR[1:N_train,1:(dim(QSAR)[2]-1)]
-#N_test
-x_test= QSAR[(N_train+1):n,1:(dim(QSAR)[2]-1)]
-
-qsar_data_check <-list(N_train=N_train,qr_train=qr_train,J=J,x_train=x_train,N_test=N_test, x_test=x_test)
-
-model_check <-stan(file = 'simple_model_performance.stan' , data = qsar_data_check, chains=4, iter=1000)
-params=extract(model_check, permuted=FALSE, inc_warmup=TRUE)
-```
 
 ```{r}
-new_params= extract(model_check)
+new_params= extract(linear_model)
 pred_scores = colMeans(new_params$qr_test)
 pred_error = sapply(1:N_test, function(x) sd(new_params$qr_test[,x]))
 true_scores = QSAR$quantitative_response[(N_train+1):n]

@@ -1,27 +1,34 @@
 data {
+  
 int < lower =1> N; // number of data points
-vector [N] qr;// observation year
-vector [N] TSPA;
-vector [N] Saacc;
-vector [N] H050;
-vector [N] MLOGP;
-vector [N] RDCHI;
-vector [N] GATS1p;
-vector [N] nN;
+vector [N] qr;
+int <lower=1> J; //J will be 7 here instead of 8 of linear model
+vector [J] x [N];
 int C040[N];
 int <lower = 0> nc; //number of carbon atoms //5 here 
-//number of hierarchies
+
+// 
+// vector [N] qr;// observation year
+// vector [N] TSPA;
+// vector [N] Saacc;
+// vector [N] H050;
+// vector [N] MLOGP;
+// vector [N] RDCHI;
+// vector [N] GATS1p;
+// vector [N] nN;
+// 
+// //number of hierarchies
 
 }
 parameters {
-  vector[nc] a; // 5 values
-  vector[nc] b;
-  vector[nc] c;
-  vector[nc] d;
-  vector[nc] e; 
-  vector[nc] f;
-  vector[nc] g;
-  vector[nc] h;
+  vector[nc] alpha; // 5 values
+  vector[J] beta [nc];
+  // vector[nc] c;
+  // vector[nc] d;
+  // vector[nc] e; 
+  // vector[nc] f;
+  // vector[nc] g;
+  // vector[nc] h;
   //vector[nc] i;
   real < lower =0> sigma ;
   //vector[nc] i;
