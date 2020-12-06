@@ -75,7 +75,7 @@ In addition, Stan provides diagnostic tools to evaluate both the inference (e.g.
 This reports use 3 different type of models i.e
 
 1) Linear Model
-2) Hierarchial Model
+2) Hierarchical Model
 3) Gaussian Process
 
 Further section explains How to the Stan model was run, Convergence diagnostics,Posterior predictive checks,Model comparison (e.g. with LOO-CV),Predictive performance assessment,Sensitivity analysis with respect to prior choices, all these steps has been performed separately on these 3 models
@@ -148,9 +148,9 @@ summary(fullmodel)
 
 # 3) Description of the 3 models used
 
-For the sake of this project, we have implemented Linear(Non Hierarchial), Hierarchical model and Gaussian Process
+For the sake of this project, we have implemented Linear(Non Hierarchical), Hierarchical model and Gaussian Process
 
-## a) Linear (Non Heirarchial)
+## a) Linear (Non Hierarchical)
 
 In the linear model, quantitative response is normally distributed with mean mu and variance sigma.
 Mean mu is computed by the dot product between coeffiencients and explanatory variables.
@@ -188,11 +188,17 @@ Here alpha is vector of dimension NC(i.e number of distinct values of C040) and 
 
 
 # 4) Informative or weakly informative priors
-and justification of their choices.
+For this report, we used the following priors
 
+1) Weakly informative prior, very weak: normal(0, 10);
+2) Generic weakly informative prior: normal(0, 1);
+
+The recommendations have been followed as per
+
+https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations
 
 # 5) Stan code 
-## a) Linear (Non Heirarchial)
+## a) Linear (Non Hierarchical)
 
 
 **Stan Code**
@@ -202,7 +208,7 @@ writeLines(readLines(code))
 ```
 
 
-## b) hierarchical
+## b) Hierarchical
 
 
 ```{r}
@@ -213,9 +219,11 @@ writeLines(readLines(code_hierarchial))
 
 # 6) How the Stan model was run
 
-that is, what options were used. This is also more clear as combination of textual explanation and the actual code line.
 
-## a) Linear (Non Heirarchial)
+## a) Linear (Non Hierarchical)
+
+The Linear model has been run for 1000 interations and with 4 monte carlo chains. The dataset has been divided into test and train sets for predictive checks.
+
 
 ```{r}
 
@@ -238,7 +246,11 @@ params=extract(linear_model, permuted=FALSE, inc_warmup=TRUE)
 ```
 
 
-## b) hierarchical
+## b) Hierarchical
+
+The Hierarchical model will be run for 2000 iterations and 4 chains. Initially the model was run with default adapt_delta, but there were too many divergences.
+So adapt_delta was set to 0.95 in order to make it less divergent.
+
 ```{r, warning=FALSE}
 
 
@@ -261,13 +273,13 @@ hierarchial <-stan(file = 'hierarchial.stan' , data = qsar_data, chains=4,
 # 7) Convergence diagnostics 
 
 Here we will discuss 5 types of convergence tests
-* Traceplots
-* $\hat{R}$
-* $n_{eff}$
-* Bulk ESS and Tail ESS
-* Divergences
+1) Traceplots
+2) $\hat{R}$
+3) $n_{eff}$
+4) Bulk ESS and Tail ESS
+5) Divergences
 
-## Linear (Non Heirarchial)
+## Linear (Non Hierarchical)
 
 ### 1) Traceplots
 
@@ -283,6 +295,7 @@ traceplot(linear_model, pars=c("alpha","beta"))
 Rhat_linear= summary(linear_model)$summary[,'Rhat']
 print(max(Rhat_linear))
 ```
+
 From printed output we can see that $\hat{R}$ < 1.01 for all the parameters
 
 ### 3) $n_{eff}$
@@ -298,7 +311,12 @@ $\frac{samples}{totalIterations}$ > 0.01 for all parameters, this means samples 
 
 ### 4) Bulk ESS and Tail ESS
 
-BUlk ESS and tail ess over 100 for all the parameters
+```{r}
+bulk_ess=monitor(extract(linear_model,permute=FALSE, inc_warmup=FALSE))[,'Bulk_ESS']
+length(which(bulk_ess < 100))
+```
+
+BUlk ESS over 100 for all the parameters i.e reliable
 
 ### 5) Divergences
 
@@ -309,13 +327,14 @@ get_num_divergent(linear_model)
 No divergences in the linear model
 
 
-## Heirarchial 
+## Hierarchical 
 
 The plots are seem to be converging
 
 ```{r}
 traceplot(hierarchial, pars=c("alpha"))
 traceplot(hierarchial, pars=c("beta"),ncol=3)
+
 
 ```
 
@@ -325,7 +344,7 @@ traceplot(hierarchial, pars=c("beta"),ncol=3)
 Rhat_h= summary(hierarchial)$summary[,'Rhat']
 print(max(Rhat_h))
 ```
-From printed output we can see that $\hat{R}$ < 1.03 for all the parameters. This implies Hierarchial model have not converged properly.
+From printed output we can see that $\hat{R}$ < 1.03 for all the parameters. This implies Hierarchical model have not converged properly.
 
 ### 3) $n_{eff}$
 
@@ -341,11 +360,11 @@ $\frac{samples}{totalIterations}$ > 0.01 for all parameters, this means samples 
 ### 4) Bulk ESS and Tail ESS
 
 ```{r,message=FALSE}
-# bulk_ess=monitor(extract(linear_model,permute=FALSE, inc_warmup=FALSE))[,'Bulk_ESS']
-# length(which(bulk_ess < 100))
+bulk_ess=monitor(extract(hierarchial,permute=FALSE, inc_warmup=FALSE))[,'Bulk_ESS']
+length(which(bulk_ess < 100))
 ```
 
-BUlk ESS and Tail ess are not reliable.
+BUlk ESS  are not reliable.
 ### 5) Divergences
 
 
@@ -365,7 +384,7 @@ In order to check the Posterior, we extract the values of the quantitative respo
 The black density plot is the plot for actual quantitative response.
 The red lines are the plot for generated quantitative response.
 
-## Linear (Non Heirarchial)
+## Linear (Non Hierarchical)
 
 ```{r}
 # instead of log, use rng
@@ -378,11 +397,12 @@ for (ind in 1980:2000)
 }
 
 ```
-##  Heirarchial 
-and what was done to improve the model.
+
+##  Hierarchical 
+
 ```{r}
 # instead of log, use rng
-plot(density(QSAR$quantitative_response),main="Posterior predictive check for simple model")
+plot(density(QSAR$quantitative_response),main="Posterior predictive check for Hierarchical model")
 params<-extract(hierarchial)
 for (ind in 3980:4000)
 {
@@ -393,24 +413,25 @@ for (ind in 3980:4000)
 
 
 We see the posterior check for the linear model are more close to the actual quantitative response. 
-This implies linear model fits better.
 
 # 9) Model comparison 
 
 In this section, we will compute the PSIS_LOO values using the loo library and then compare the models
 
-## Linear (Non Heirarchial)
+## Linear (Non Hierarchical)
+
 ```{r}
 loo_model_linear <- loo(extract_log_lik(linear_model))
 print(loo_model_linear)
-plot(loo_model_linear, main = "PSIS Diagonostic for simple Model")
+plot(loo_model_linear, main = "PSIS Diagonostic for linear Model")
 ```
-## Hierarchial 
+
+## Hierarchical 
 
 ```{r}
 loo_model_hierarchial <- loo(extract_log_lik(hierarchial))
 loo_model_hierarchial
-plot(loo_model_hierarchial, main = "PSIS Diagonostic for Heirarchial Model")
+plot(loo_model_hierarchial, main = "PSIS Diagonostic for Hierarchical Model")
 ```
 
 
@@ -446,10 +467,31 @@ with respect to prior choices (i.e. checking whether the result changes a lot if
 
 # 12) Discussion of issues and potential improvements.
 
+1) Based on our understanding, the hierarchical model was built on the basis of C040 variable. However this model performed worse than the linear model. 
+One potential improvement can be building hierarchical model based on some other parameter like H050 or some variable. 
+Based on deep understanding on the data, a better way of hierarchical modeling can be constructed.
+
+2) For the Gaussian model which we implemented, we faced the issue of computational time. It took forever to execute our code. Thats why we chose the subset of dataset to work upon. In future maybe with the help of better computation power, we could build a better model.
+
+
 # 13) Conclusion 
 
-what was learned from the data analysis.
+1) One important thing we noticed here was that changing priors didn't change the results significantly. 
+This also comes by intuition as the dataset we used in this report was large enough for Bayesian inference. And when the dataset is large enough, priors doesnt make much difference.
+
+2) We concluded that not always the complex model is better. Most often complex models fails to outperform due to lack of domain knowledge. Like in our case the hierarchical model didn't performed good as expected. Maybe it will perform better when grouping method changes, but we have to check that.
+
+The code for model is present at the following Github link, feel free to contribute.
+
+https://github.com/PragatiGupta97/Bayesian-World-Bank-Youth-Unemployment-Rates
+
+ 
 
 # 14) Self-reflection of what the group learned while making the project.
 
+1) This project acted like a crash course for the BDA Course for us. This helped us in reviving all the concepts which we already covered in the course but somehow forgotten over time.
+
+2) Developing an end to end project with real dataset helped us in connecting the knowledge which we gained over the course. There were some knowledge gaps in between, but this project helped us in connected all the dots.
+
+3) Overall the experience was quite rich.
 
