@@ -101,6 +101,16 @@ the dataset has been obtained from UCI dataset archives (https://archive.ics.uci
 | 8 |C040|Atom-centred fragments|
 | 9 |acute aquatic toxicity|
 
+```{r}
+PairPlot(QSAR, colnames(QSAR)[1:8], "Pair Plotting of each pair of features", alpha = 0.8,  point_color = "blue")
+pairs(QSAR[,1:8], pch = 18,  cex = 0.4, col = "#FC4E07", lower.panel=NULL)
+```
+
+```{r}
+heatmap(as.matrix(QSAR))
+boxplot.default(QSAR, horizontal = TRUE)
+```
+
 
 ```{r}	
 PairPlot(QSAR, colnames(QSAR)[1:8], "Pair Plotting of each pair of features", alpha = 0.8,  point_color = "blue")	
