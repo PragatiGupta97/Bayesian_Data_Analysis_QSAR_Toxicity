@@ -12,6 +12,7 @@ output:
   word_document:
     toc: yes
     toc_depth: '1'
+bibliography: uni.bib
 ---
 
 
@@ -25,9 +26,6 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 ```{r, results='hide',message=FALSE,include=FALSE}
-#Loaded packages
-# To install aaltobda, see the General information in the assignment.
-library(aaltobda)
 library(rstan)
 library(bayesplot)
 library(loo)
@@ -43,28 +41,13 @@ set.seed(123)
 
 # 1) Introduction
 
-This report presents how to detect the "Quantitative Response" using Bayesian Inference.Bayesian modeling provides a principled way to quantify uncertainty and incorporate prior knowledge into the model. 
+## Problems
 
-What is more, **Stan**’s main inference engine, **Hamiltonian Monte Carlo sampling**, is friendly to diagnostics, which means we can verify whether our inference is reliable. Stan is an expressive probabilistic programing language that abstracts the inference and allows users to focus on the modeling. The resulting code is readable and easily extensible, which makes the modeler’s work more transparent and flexible.
+In recent years, both scientists and public are concerning about environmental pollution and toxicity. The level of environmental pollution has increased in years and has had any sign of stopping. Observing this problems, we want to understand more about how pollution level is quantified and predicted. There has been many dataset published relate to this problem and our group decide to choose dataset which relates to aquatic toxicity. This dataset measure the amount of effective substances within the aquatic test sample and measure the toxicity of the sample. However, it is hard to illustrate how toxic a test sample is, especially there hasn't been any general measurement existed yet. In this dataset, they use survivability of *Daphnia* (LC50) as the measurement, which is the concentration that causes death of 50% of *Daphnia* within 48 hours. Lethal concentrations were first converted to molarity and then transformed to a logarithmic scale (–Log mol/L). The predictive value (Quantitative Response) is the level of LC50 that we want to conclude from the dataset. By understanding the value of data, we want to know, whether we can predict the LC50 level knowing the component of substances or not.
 
+This dataset was used to develop quantitative regression QSAR models to predict acute aquatic toxicity towards the fish Pimephales promelas (fathead minnow) on a set of 908 chemicals. The model comprised 8 molecular descriptors: TPSA(Tot) (Molecular properties), SAacc (Molecular properties), H-050 (Atom-centred fragments), MLOGP (Molecular properties), RDCHI (Connectivity indices), GATS1p (2D autocorrelations), nN (Constitutional indices), C-040 (Atom-centred fragments).
 
-For this project **QSAR aquatic toxicity Data Set** has been chosen.
-
-
-## Motivation
-
-This dataset was used to develop quantitative regression QSAR models to predict acute aquatic toxicity towards the fish Pimephales promelas (fathead minnow) on a set of 908 chemicals. 
-
-
-To predict acute aquatic toxicity towards Daphnia Magna, LC50 data, which is the concentration that causes death in 50% of test D. magna over a test duration of 48 hours, was used as model response. 
-
-
-The model comprised 8 molecular descriptors: TPSA(Tot) (Molecular properties), SAacc (Molecular properties), H-050 (Atom-centred fragments), MLOGP (Molecular properties), RDCHI (Connectivity indices), GATS1p (2D autocorrelations), nN (Constitutional indices), C-040 (Atom-centred fragments).
-
-
-## The problem
-
-
+This report presents how to detect the "Quantitative Response" using Bayesian Inference. Bayesian modeling provides a principled way to quantify uncertainty and incorporate prior knowledge into the model. What is more, **Stan**’s main inference engine, **Hamiltonian Monte Carlo sampling**, is friendly to diagnostics, which means we can verify whether our inference is reliable. Stan is an expressive probabilistic programing language that abstracts the inference and allows users to focus on the modeling. The resulting code is readable and easily extensible, which makes the modeler’s work more transparent and flexible. @QSAR
 
 ## Modeling idea
 
@@ -75,30 +58,23 @@ In addition, Stan provides diagnostic tools to evaluate both the inference (e.g.
 This reports use 3 different type of models i.e
 
 1) Linear Model
-2) Hierarchical Model
+2) Hierarchial Model
 3) Gaussian Process
 
 Further section explains How to the Stan model was run, Convergence diagnostics,Posterior predictive checks,Model comparison (e.g. with LOO-CV),Predictive performance assessment,Sensitivity analysis with respect to prior choices, all these steps has been performed separately on these 3 models
 
 ## Illustrative figure 
 
-Lets visualizing the density plot of each variable in order to check the range of the  variables in the dataset
-
-**QSAR toxicity Dataset**
-
+Lets visualizing the density plot of each variable in order to check the range of the  variables in the dataset.
 ```{r}
-
 QSAR <- read.csv(file = 'qsar_aquatic_toxicity.csv')
-colnames(QSAR)
 par(mfrow=c(3,3))
 cols = colnames(QSAR)
 
 for(col in cols)
 { 
-plot(density(QSAR[col][,1]), main=col)
-  
+  plot(density(QSAR[col][,1]), main=col)
 }
-
 ```
 
 Now lets visualize the pair plot in order to see if there is any collinearity in the data set or not.
@@ -152,39 +128,60 @@ For the sake of this project, we have implemented Linear(Non Hierarchical), Hier
 
 ## a) Linear (Non Hierarchical)
 
-In the linear model, quantitative response is normally distributed with mean mu and variance sigma.
-Mean mu is computed by the dot product between coeffiencients and explanatory variables.
+In the linear model, quantitative response is normally distributed with mean mu and variance sigma. Mean mu is computed by the dot product between coeffiencients and explanatory variables.
+$$
+y \sim \mathcal{N}(\mu, \sigma)
+$$
+where $\mu$ is the predictive value from linear model
 
-$QuantitativeResponse_{i}$ ~ $\mathcal{N}$ ($\mu$ ,$sigma$ )
-
-**where**
-
-$\mu$ = alpha + beta[1] * TSPA + beta[2] * Saacc + beta[3] * H050 + beta[4] * MLOGP+  beta[5] * RDCHI +beta[6] * GATS1p + beta[7] * nN
-+ beta[8] * C040;
-
-which is written in stan code like the following for simplicity
-
-$\mu_{i}$ = alpha + dotProduct($x_{i,:}$,Transpose(beta));
-
-Here alpha and beta are the prior which are used in this linear model where alpha is a real number and beta is vector of real numbers.
+$$
+\mu = W\times X
+$$
+which $W$ indicates the vector of weights assign to each value of columns, $X$ indicates the data matrix.
 
 ## b) Hierarchical
 
-In the hierarchical model, the data has been categoried according to C040 explanatory variables. C040 represents the number of carbon atoms.
-After thorough reading of research papers, our team analysed the C040 maybe be an interesting variable.
-Therefore hierarchical model has been constructed based on C040, i.e C040 will decide the prior based on C040 variable.
+In the hierarchical model, the data has been categorized according to C040 explanatory variables. C040 represents the number of carbon atoms. After thorough reading of research papers, our team analyzed the C040 maybe be an interesting variable. Therefore hierarchical model has been constructed based on C040, i.e C040 will decide the prior based on C040 variable.
 
 In the hierarchical model, quantitative response is normally distributed with mean mu and variance sigma similar to linear model.
 
-$QuantitativeResponse_{i}$ ~ $\mathcal{N}$ ($\mu$ ,$sigma$ )
+$$
+y_{ij} \sim \mathcal{N}(\mu_{i}, \sigma)
+$$
 
-However, the major difference here is of mu and the priors . Here 
+However, the major difference here is of $\mu$ and the priors .
 
-$\mu_{i}$= $alpha[C040_{i+1}] + dotProduct(x_{ind,:},beta[C040_{ind+1},]')$
+$$
+\mu_{i} = W_{i}\times X
+$$
+$$
+W_{i} \sim \mathcal{N}(u_{c}, \sigma_{c})
+$$
 
-This means mu is dependent on the the coefficient alpha and beta which maps to corresponding C040 value.
+$\u_{c}$ and $\sigma_{c}$ are drawn from prior which share the same value if data rows are in same group. This means mu is dependent on the the coefficient weight which maps to corresponding C040 value.
 
-Here alpha is vector of dimension NC(i.e number of distinct values of C040) and beta is a matrix of dimension NC x J (number of distinct values of C040 X explanatory variables)
+Here weight is a matrix of dimension NC x (J+1) (number of distinct values of C040 and free value X explanatory variables).
+
+## c) Gaussian Process
+
+In the above section, we use linear model to predict quantitative response. However, since linear model is fairly simple, we want to find a better way of modelling to improve the performance of our predictive model. Therefore, in this section, we will implement Gaussian Process to find a suitable way of modelling.
+
+For given set of data points, there are countless function that can provide a good fit for our dataset. Gaussian Process assigns each possible function a probability and the mean over the probability distribution provides the most probable suitable function for our dataset @gaussian. It can be considered a prior to the probability function $P(f)$, in which $f$ is our modelling function. 
+$$
+f \sim GP(\mu(x), K(x|\theta))
+$$
+
+The parameter of this probability distribution is mean function $\mu$ and covariance function $k$. $k$ is defined as the covariance kernel that calculate the distance between all pairwise data points. It determines the variation of functions of the Gaussian Process. $\theta$ is the parameter of specific kernel.
+
+After that, the observation of Gaussian process is drawn from Normal distribution
+$$
+y \sim \mathcal{N}(f, \sigma^2)
+$$
+The kernel that we use in this report is exponentiated quadratic function,
+$$
+K(x| \alpha, \rho, \sigma)_{i, j} = \alpha^2 exp(-\frac{1}{2\rho^2}\sum_{d=1}^{D}(x_{i,d} - x_{j,d})^2) + \delta_{i,j}\sigma^2 
+$$
+where $\alpha$, $\rho$, $\sigma$ are hyperparameters defining the covariance function and where $\delta_{i,j}$ is the Kronecker delta function with value 1 if $i=j$ and value 0 otherwise. This test is between the indexes $i$ and $j$, not between values $x_{i}$ and $x_{j}$.
 
 
 # 4) Informative or weakly informative priors
@@ -193,15 +190,51 @@ For this report, we used the following priors
 1) Weakly informative prior, very weak: normal(0, 10);
 2) Generic weakly informative prior: normal(0, 1);
 
-The recommendations have been followed as per
+The recommendations have been followed as per @prior_recom
 
 https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations
 
+## Linear Model
+
+$$
+W \sim \mathcal{N}(0, 1)
+$$
+
+## Hierarchical Model
+
+$$
+\mu_{c} \sim \mathcal{N}(0, 1) 
+$$
+$$
+\sigma_{c} \sim \mathcal{N}(0, 1) 
+$$
+
+## Gaussian Process Model
+
+For Gaussian Process model, we use suggested prior from the tutorial
+
+https://mc-stan.org/docs/2_19/stan-users-guide/fit-gp-section.html
+
+The priors that I choose for Gaussian Process base on https://mc-stan.org/docs/2_19/stan-users-guide/fit-gp-section.html instruction.
+
+$$
+\rho \sim InvGamma(5,5)
+$$
+$$
+\alpha \sim \mathcal{N}(0,1)
+$$
+$$
+\sigma \sim \mathcal{N}(0,1)
+$$
+$$
+\eta \sim \mathcal{N}(0,1)
+$$
+
+
 # 5) Stan code 
+
 ## a) Linear (Non Hierarchical)
 
-
-**Stan Code**
 ```{r}
 code <- file("linear_model_split.stan")
 writeLines(readLines(code))
@@ -216,16 +249,100 @@ code_hierarchial <- file("hierarchial.stan")
 writeLines(readLines(code_hierarchial))
 ```
 
+## c) Gaussian Process Model
+
+We will implement the above model in Stan. Fix data is declared in data block. $x_{1}$, $y_{1}$ refer to train data, $x_{2}$ refers to test data
+
+```{}
+data {
+  int <lower=0> J;
+  
+  // observe data
+  int <lower=0> N1;
+  vector [J] x1[N1];
+  vector [N1] y1;
+  
+  // test data
+  int <lower=0> N2;
+  vector [J] x2[N2];
+}
+```
+
+In the transformed_data code block, we merge the train and test data to calculate covarivance for the whole dataset
+
+```{}
+transformed data {
+  int<lower=1> N = N1 + N2;
+  vector[J] x[N]; //number all
+  for (n1 in 1:N1) x[n1] = x1[n1];
+  for (n2 in 1:N2) x[N1 + n2] = x2[n2];
+}
+```
+
+Next, we declare the parameter of the model. Notice that the covariances should be greater than 0. Therefore, we set lower bound of parameters to be 0. We will explicitly define $\eta$ parameter as the latent variable formulation of a GP in Stan. This will be useful for when the outcome is not normal. 
+
+```{}
+parameters {
+  real <lower=0> rho;
+  real <lower=0> alpha;
+  real <lower=0> sigma;
+  vector[N] eta;
+}
+```
+
+After that, we transform the parameters as model instruct. In this part, We use the Cholesky parameterized multivariate normal rather than the standard parameterization because it allows us to the cholesky_decompose function which has been optimized for both small and large matrices. This will increase the computational speed of our model.
+
+```{}
+transformed parameters {
+  vector[N] f;
+  {
+    matrix[N,N] K = cov_exp_quad(x, alpha, rho) + diag_matrix(rep_vector(square(sigma), N));
+    matrix[N,N] L_K = cholesky_decompose(K);
+    f = L_K * eta;
+  }
+}
+```
+
+The only thing left is to choose priors and fit the model.
+
+```{}
+model {
+  // prior
+  rho ~ inv_gamma(5, 5);
+  alpha ~ normal(0, 1);
+  sigma ~ normal(0, 1);
+  eta ~ normal(0, 1);
+  
+  // likelihood
+  y1 ~ normal(f[1:N1], sigma);
+}
+```
+
+We also put predictive result and log likelihood function in generated_quantities code block.
+
+```{}
+generated quantities {
+  vector[N2] y2;
+  vector[N1] log_lik_1;
+  
+  // predictive assessment
+  for(n2 in 1:N2)
+    y2[n2] = normal_rng(f[N1 + n2], sigma);
+  
+  // log likelihood
+  for (n1 in 1:N1)
+    log_lik_1[n1]= normal_lpdf(y1[n1] | f[n1] ,sigma );
+}
+```
 
 # 6) How the Stan model was run
-
 
 ## a) Linear (Non Hierarchical)
 
 The Linear model has been run for 1000 interations and with 4 monte carlo chains. The dataset has been divided into test and train sets for predictive checks.
 
 
-```{r}
+```{r, warning=FALSE, results='hide'}
 
 N_test=20
 n=dim(QSAR)[1]
@@ -251,7 +368,7 @@ params=extract(linear_model, permuted=FALSE, inc_warmup=TRUE)
 The Hierarchical model will be run for 2000 iterations and 4 chains. Initially the model was run with default adapt_delta, but there were too many divergences.
 So adapt_delta was set to 0.95 in order to make it less divergent.
 
-```{r, warning=FALSE}
+```{r, warning=FALSE, results='hide'}
 
 
 n=dim(QSAR)[1]
@@ -269,6 +386,25 @@ hierarchial <-stan(file = 'hierarchial.stan' , data = qsar_data, chains=4,
 #print(hierarchial)
 ```
 
+## c) Gaussian Process Model
+
+Here, I choose 100 rows of data as train data and next 2 rows of data as test data. The number of iterations per chain is 4000, with the default number of chains is 4.
+
+```{r, warning=FALSE, results = 'hide'}
+N2 = 20
+N = 120
+N1 = N -N2
+J = dim(QSAR)[2]-1
+
+x1 = QSAR[1:N1, 1:8]
+x2 = QSAR[(N1+1):N, 1:8]
+y1 = QSAR[1:N1, 9]
+y2 = QSAR[(N1+1):N, 9]
+
+qsar_data <-list(J=J, N1=N1, N2=N2, x1=x1, y1=y1, x2=x2)
+
+gaussian_process <-stan(file = 'gaussian_process.stan' , data = qsar_data, iter = 4000)
+```
 
 # 7) Convergence diagnostics 
 
@@ -335,10 +471,6 @@ However, we have checked individual convergence for all beta. They seem to conve
 
 ```{r}
 traceplot(hierarchial, pars=c("alpha"))
-
-#traceplot(hierarchial, pars=c("beta"))
-
-
 ```
 
 ### 2) $\hat{R}$
@@ -380,6 +512,49 @@ Initially the divergences were more than 1000,
 but after setting the **adapt_delta=0.95**, the divergences were reduced.
 So we evaluated the hierarchical model was not satisfactory.
 
+##) Gaussian Process Model
+
+### 1) Traceplots
+
+The trace plots clearly show that the parameters have converged.
+
+```{r}
+traceplot(gaussian_process, pars=c("alpha","rho", "sigma"))
+```
+
+### 2) $\hat{R}$
+
+```{r}
+Rhat_linear= summary(gaussian_process)$summary[,'Rhat']
+print(max(Rhat_linear))
+```
+From printed output we can see that $\hat{R}$ < 1.01 for all the parameters
+
+### 3) $n_{eff}$
+
+```{r}
+neff=summary(gaussian_process)$summary[,'n_eff']
+val=neff/1000 
+which(val < 0.01)
+```
+
+$\frac{samples}{totalIterations}$ > 0.01 for all parameters, this means samples are not biased and true effect of sample size is not overestimated.
+
+### 4) Bulk ESS and Tail ESS
+
+```{r,results='hide',message=FALSE}
+bulk_ess=monitor(extract(gaussian_process,permute=FALSE, inc_warmup=FALSE))[,'Bulk_ESS']
+length(which(bulk_ess < 100))
+```
+
+### 5) Divergences
+
+```{r}
+get_num_divergent(gaussian_process)
+```
+
+No divergences in the gaussian process model.
+
 
 # 8) Posterior predictive checks
 
@@ -415,6 +590,17 @@ for (ind in 3980:4000)
 
 ```
 
+## Gaussian Process Model 
+
+```{r}
+plot(density(QSAR[1:N1, 9]),main="Posterior predictive check for 
+     gaussian process model", ylim=range(0, 0.4))
+params<-extract(gaussian_process)
+for (ind in 3980:4000)
+{
+  lines(density(params$pred_y1[ind,]), col='red');
+}
+```
 
 We see the posterior check for the linear model are more close to the actual quantitative response. 
 
@@ -438,6 +624,15 @@ loo_model_hierarchial
 plot(loo_model_hierarchial, main = "PSIS Diagonostic for Hierarchical Model")
 ```
 
+##) Gaussian Process Model
+
+```{r}
+loglik <- extract_log_lik(gaussian_process, merge_chains = FALSE)
+r_eff <- relative_eff(exp(loglik))
+loo_gaussian_model <- loo(loglik, r_eff = r_eff)
+print (loo_gaussian_model)
+plot(loo_gaussian_model, main = "PSIS Diagonostic for GP Model")
+```
 
 From the plot, we see the LOO values of the Linear model are better.
 
@@ -465,9 +660,12 @@ arrows(true_scores,pred_scores+pred_error,true_scores,
 
 # 11) Sensitivity analysis 
 
-with respect to prior choices (i.e. checking whether the result changes a lot if prior is changed)
+We now test how sensible our models are to the choice of the priors: we compared the results of Pareto-k-diagnostics for different choices of priors and the comparison is shown in the table below. After using the **weakly informative priors** previously presented, we first tested an even more **wide** and **less informative** prior for each one of the models, then we tested a biased prior, to further investigate the influence the prior has one the models. 
 
-2 types of priors
+Given the size of the dataset, we could expect that any prior would have little influence on the model, which would resemble instead the shape of the likelihood. This consideration is clearly reflected by the results we obtained (see the table below) for the linear and hierarchical models, while guassian model is definitely sensible to the prior choice.
+ 
+ 
+
 
 # 12) Discussion of issues and potential improvements.
 
@@ -498,4 +696,6 @@ https://github.com/PragatiGupta97/Bayesian-World-Bank-Youth-Unemployment-Rates
 2) Developing an end to end project with real dataset helped us in connecting the knowledge which we gained over the course. There were some knowledge gaps in between, but this project helped us in connected all the dots.
 
 3) Overall the experience was quite rich.
+
+# References 
 

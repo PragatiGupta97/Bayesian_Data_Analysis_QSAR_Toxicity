@@ -1,0 +1,40 @@
+---
+title: "BDA Project"
+author: "Dylan, Francesco, Pragati"
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: 1
+  html_document:
+    toc: yes
+    toc_depth: '1'
+    df_print: paged
+  word_document:
+    toc: yes
+    toc_depth: '1'
+bibliography: uni.bib
+---
+
+# Intrid
+
+Hello @recomm
+
+We now test how sensible our models are to the choice of the priors: we compared the results of Pareto-k-diagnostics for different choices of priors and the comparison is shown in the table below. After using the **weakly informative priors** previously presented, we first tested an even more **wide** and **less informative** prior for each one of the models, then we tested a biased prior, to further investigate the influence the prior has one the models. 
+
+Given the size of the dataset, we could expect that any prior would have little influence on the model, which would resemble instead the shape of the likelihood. This consideration is clearly reflected by the results we obtained (see the table below) for the linear and hierarchical models, while guassian model is definitely sensible to the prior choice.
+ 
+ 
+|**Priors**|**Model**|**Pareto k estimates**|
+|---|---|---|
+|alpha ~ normal(0,1) | Linear |all k < 0.5|
+|beta ~ normal(0,1) |||
+|sigma ~ normal(0,100)|||
+||||
+
+
+
+
+
+
+
+# References 
