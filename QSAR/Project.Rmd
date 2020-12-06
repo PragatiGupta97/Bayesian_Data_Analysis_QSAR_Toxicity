@@ -311,8 +311,12 @@ No divergences in the linear model
 
 ## Heirarchial 
 
+The plots are seem to be converging
+
 ```{r}
-traceplot(hierarchial, pars=c("alpha","beta"))
+traceplot(hierarchial, pars=c("alpha"))
+traceplot(hierarchial, pars=c("beta"),ncol=3)
+
 ```
 
 ### 2) $\hat{R}$
@@ -336,7 +340,12 @@ $\frac{samples}{totalIterations}$ > 0.01 for all parameters, this means samples 
 
 ### 4) Bulk ESS and Tail ESS
 
-BUlk ESS and tail ess are not reliable.
+```{r,message=FALSE}
+# bulk_ess=monitor(extract(linear_model,permute=FALSE, inc_warmup=FALSE))[,'Bulk_ESS']
+# length(which(bulk_ess < 100))
+```
+
+BUlk ESS and Tail ess are not reliable.
 ### 5) Divergences
 
 
@@ -346,14 +355,18 @@ get_num_divergent(hierarchial)
 
 Initially the divergences were more than 1000, 
 but after setting the **adapt_delta=0.95**, the divergences were reduced.
-So we eavaluated the hierarchial model was not satisafactory.
-
+So we evaluated the hierarchical model was not satisfactory.
 
 
 # 8) Posterior predictive checks
 
-## Linear (Non Heirarchial)l 
-and what was done to improve the model.
+In order to check the Posterior, we extract the values of the quantitative response of the last 20 interactions and compare it with the actual quantitative response.
+
+The black density plot is the plot for actual quantitative response.
+The red lines are the plot for generated quantitative response.
+
+## Linear (Non Heirarchial)
+
 ```{r}
 # instead of log, use rng
 plot(density(QSAR$quantitative_response),main="Posterior predictive 
@@ -378,10 +391,13 @@ for (ind in 3980:4000)
 
 ```
 
+
+We see the posterior check for the linear model are more close to the actual quantitative response. 
+This implies linear model fits better.
+
 # 9) Model comparison 
-(e.g. with LOO-CV).
 
-
+In this section, we will compute the PSIS_LOO values using the loo library and then compare the models
 
 ## Linear (Non Heirarchial)
 ```{r}
@@ -398,10 +414,16 @@ plot(loo_model_hierarchial, main = "PSIS Diagonostic for Heirarchial Model")
 ```
 
 
+From the plot, we see the LOO values of the Linear model are better.
+
 
 # 10) Predictive performance assessment 
 
-if applicable (e.g. classification accuracy) and evaluation of practical usefulness of the accuracy.
+Here the predictive performance is done only for the Linear Model as it performed best for our dataset.
+
+Here, we are comparing the actual quantitative response with the predicted quantitative response.
+
+The plot indicates the actual target variable along with the predicted values with uncertainty.
 
 
 ```{r}
@@ -415,12 +437,12 @@ arrows(true_scores,pred_scores+pred_error,true_scores,
        pred_scores-pred_error, length =0.05, angle = 90, code =3)
 
 ```
+
 # 11) Sensitivity analysis 
 
 with respect to prior choices (i.e. checking whether the result changes a lot if prior is changed)
 
 2 types of priors
-
 
 # 12) Discussion of issues and potential improvements.
 
