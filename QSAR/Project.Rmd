@@ -206,7 +206,7 @@ Here we will discuss 5 types of convergence tests
 ```{r}
 
 #mcmc_trace(as.array(model_simple), pars = c("a","b","c","d","e","f","g","h","i"), facet_args = list(nrow = 3))
-traceplot(model_simple, pars=c("a","b","c","d","e","f","g","h","i"))
+traceplot(model_simple, pars=c("alpha","beta"))
 ```
 
 ### 2) $\hat{R}$
@@ -337,33 +337,18 @@ plot(loo_model_hierarchial, main = "PSIS Diagonostic for Heirarchial Model")
 if applicable (e.g. classification accuracy) and evaluation of practical usefulness of the accuracy.
 
 ```{r}
-NP=20
+
+N_test=20
 n=dim(QSAR)[1]
-ngob = n-NP
-TSPA=QSAR$TSPA[1:ngob]
-Saacc=QSAR$Saacc[1:ngob]
-H050=QSAR$H050[1:ngob]
-MLOGP=QSAR$MLOGP[1:ngob]
-RDCHI=QSAR$RDCHI[1:ngob]
-GATS1p=QSAR$GATS1p[1:ngob]
-nN=QSAR$nN[1:ngob]
-C040=QSAR$C040[1:ngob]
-qr=QSAR$quantitative_response[1:ngob]
 
+N_train = n-N_test
+qr_train=QSAR$quantitative_response[1:N_train]
+J=(dim(QSAR)[2]-1)
+x_train= QSAR[1:N_train,1:(dim(QSAR)[2]-1)]
+#N_test
+x_test= QSAR[(N_train+1):n,1:(dim(QSAR)[2]-1)]
 
-
-TSPA_new=QSAR$TSPA[(ngob+1):n]
-Saacc_new=QSAR$Saacc[(ngob+1):n]
-H050_new=QSAR$H050[(ngob+1):n]
-MLOGP_new=QSAR$MLOGP[(ngob+1):n]
-RDCHI_new=QSAR$RDCHI[(ngob+1):n]
-GATS1p_new=QSAR$GATS1p[(ngob+1):n]
-nN_new=QSAR$nN[(ngob+1):n]
-C040_new=QSAR$C040[(ngob+1):n]
-#qr=QSAR$quantitative_response[381:545]
-
-qsar_data_check <-list(N=ngob,qr=qr,TSPA=TSPA,Saacc=Saacc,H050=H050,MLOGP=MLOGP,RDCHI=RDCHI,GATS1p=GATS1p,nN=nN,C040=C040,
-                 NP=NP,TSPA_new=TSPA_new,Saacc_new=Saacc_new,H050_new=H050_new,MLOGP_new=MLOGP_new,RDCHI_new=RDCHI_new,GATS1p_new=GATS1p_new,nN_new=nN_new,C040_new=C040_new)
+qsar_data_check <-list(N_train=N_train,qr_train=qr_train,J=J,x_train=x_train,N_test=N_test, x_test=x_test)
 
 model_check <-stan(file = 'simple_model_performance.stan' , data = qsar_data_check, chains=4, iter=1000)
 params=extract(model_check, permuted=FALSE, inc_warmup=TRUE)
@@ -371,9 +356,9 @@ params=extract(model_check, permuted=FALSE, inc_warmup=TRUE)
 
 ```{r}
 new_params= extract(model_check)
-pred_scores = colMeans(new_params$qr_predicted)
-pred_error = sapply(1:NP, function(x) sd(new_params$qr_predicted[,x]))
-true_scores = QSAR$quantitative_response[(ngob+1):n]
+pred_scores = colMeans(new_params$qr_test)
+pred_error = sapply(1:N_test, function(x) sd(new_params$qr_test[,x]))
+true_scores = QSAR$quantitative_response[(N_train+1):n]
 plot(true_scores,pred_scores,xlim=range(1:10), ylim=range(1:10))
 abline(a=0,b=1,lty="dashed")
 arrows(true_scores,pred_scores+pred_error,true_scores,pred_scores-pred_error, length =0.05, angle = 90, code =3)

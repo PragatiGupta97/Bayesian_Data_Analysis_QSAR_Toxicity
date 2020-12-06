@@ -1,60 +1,43 @@
 data {
-int < lower =1> N; // number of data points
-vector [N] qr;// quantitative response
-vector [N] TSPA;
-vector [N] Saacc;
-vector [N] H050;
-vector [N] MLOGP;
-vector [N] RDCHI;
-vector [N] GATS1p;
-vector [N] nN;
-vector [N] C040;
 
-int < lower =1> NP; // number of data points to be predicted
-//vector [NP] qr_new;// quantitative response
-vector [NP] TSPA_new;
-vector [NP] Saacc_new;
-vector [NP] H050_new;
-vector [NP] MLOGP_new;
-vector [NP] RDCHI_new;
-vector [NP] GATS1p_new;
-vector [NP] nN_new;
-vector [NP] C040_new;
+int < lower =1> N_train; // number of data points
+vector [N_train] qr_train;// observation year
+int <lower=1> J;
+vector [J] x_train [N_train];
 
+int < lower =1> N_test; // number of data points to be predicted
+
+vector [J] x_test [N_test];
 
 
 }
 parameters {
-  real a;
-  real b;
-  real c;
-  real d;
-  real e; 
-  real f;
-  real g;
-  real h;
-  real i;
+  real alpha;
+  vector [J] beta;
   real < lower =0> sigma ;
 }
 transformed parameters {
-  vector [N] mu = a + b * TSPA + c * Saacc + d *H050 + e *MLOGP+ f*RDCHI +g*GATS1p
-  + h*nN + i*C040;
+  vector [N_train] mu;
+  for (i in 1:N_train)
+  mu[i] = alpha + dot_product(x_train[i,:],beta');
+  
 }
 model {
 
 sigma ~ normal(0,100);
-qr ~ normal (mu , sigma );
+qr_train ~ normal (mu , sigma );
 
 }
 generated quantities {
-//generated qr
-vector [NP] mu_new= a + b * TSPA_new + c * Saacc_new + d *H050_new + 
-e *MLOGP_new+ f*RDCHI_new +g*GATS1p_new+ h*nN_new + i*C040_new;
 
-vector[NP] qr_predicted;
-for (ind in 1:NP)
+vector [N_test] mu_test;
+vector [N_test] qr_test;
+for (i in 1:N_test)
+{mu_test[i] = alpha + dot_product(x_test[i,:],beta');};
+
+for (ind in 1:N_test)
 {
-qr_predicted[ind]= normal_rng (mu_new[ind] ,sigma);
+qr_test[ind]= normal_rng (mu_test[ind] ,sigma);
 };
 
 

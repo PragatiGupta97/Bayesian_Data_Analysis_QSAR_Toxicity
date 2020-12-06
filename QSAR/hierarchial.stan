@@ -44,24 +44,8 @@ transformed parameters {
   
   };
   
-//+ i*C040;
-//+ i*C040 + d*H050
 }
 model {
-  
-//beta ~ normal(0,26.74);
-//alpha ~ normal(789,2523.813);
-//a~ gamma(1,1);
-//b~ gamma(1,1);
-//c~ gamma(1,1);
-//d~ gamma(1,1);
-//e~ gamma(1,1);
-//f~ gamma(1,1);
-//g~ gamma(1,1);
-//h~ gamma(1,1);
-//i~ gamma(1,1);
-
-//hyperpriors
 mu_a~normal(0,0.1);
 tau_a~ normal(0,1);
 
