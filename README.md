@@ -19,7 +19,7 @@ We have implemeted the following sections in our R markdown.
 12. Discussion of issues and potential improvements.
 13. Conclusion 
 
-#How to run this project
+# How to run this project
 1. Clone the folder QSAR to your environment. I used Rstudio on Jupyter Hub. You can chose any environment of your choice.
 2. Get Stan environment ready.
 3. Thats it folks! You are ready to work on the project.
